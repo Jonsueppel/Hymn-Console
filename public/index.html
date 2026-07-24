@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#eaf3fb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Hymn Console">
+    <meta name="format-detection" content="telephone=no">
+    <title>Hymn Console</title>
+    <link rel="stylesheet" href="/styles.css?v=20260724-5">
+  </head>
+  <body data-active-tab="service">
+    <div class="splash-screen" id="splashScreen" role="status" aria-live="polite">
+      <div class="splash-card">
+        <img src="/mark.svg" alt="" data-brand-logo>
+        <p class="eyebrow">Hymn Console</p>
+        <h1>Hymn Player</h1>
+        <p id="splashStatus">Preparing service controls...</p>
+        <div class="splash-progress" aria-hidden="true"><span id="splashProgress"></span></div>
+        <ul class="splash-checks" id="splashChecks">
+          <li data-splash-check="server">Server</li>
+          <li data-splash-check="library">Library</li>
+          <li data-splash-check="queue">Queue</li>
+          <li data-splash-check="audio">Audio</li>
+        </ul>
+        <div class="splash-actions">
+          <button id="splashStartBtn" type="button" hidden>Start</button>
+          <button id="splashRetryBtn" type="button" hidden>Retry</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-screen" id="authScreen" hidden>
+      <section class="auth-card" aria-labelledby="authTitle">
+        <img src="/mark.svg" alt="" data-brand-logo>
+        <p class="eyebrow">Hymn Console Security</p>
+        <h1 id="authTitle">Sign In</h1>
+        <p class="muted" id="authMessage">Use your operator or administrator account.</p>
+
+        <form id="loginForm" class="auth-form">
+          <label><span>Username</span><input id="loginUsername" autocomplete="username" required></label>
+          <label><span>Password</span><input id="loginPassword" type="password" autocomplete="current-password" required></label>
+          <button class="primary" type="submit">Sign In</button>
+          <button id="showRecoveryBtn" type="button">Recover Administrator</button>
+        </form>
+
+        <form id="setupAccountsForm" class="auth-form" hidden>
+          <h2>Create Secure Access</h2>
+          <p class="muted">Create the built-in administrator account. After signing in, create user accounts and choose exactly what each person can use.</p>
+          <label><span>Administrator Username</span><input id="setupAdminUsername" autocomplete="username" value="admin" required></label>
+          <label><span>Administrator Password</span><input id="setupAdminPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+          <button class="primary" type="submit">Create Administrator</button>
+        </form>
+
+        <form id="recoverAccountForm" class="auth-form" hidden>
+          <h2>Recover Administrator</h2>
+          <label><span>Administrator Username</span><input id="recoverUsername" autocomplete="username" required></label>
+          <label><span>Recovery Code</span><input id="recoverCode" autocomplete="off" required></label>
+          <label><span>New Password</span><input id="recoverPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+          <button class="primary" type="submit">Reset Password</button>
+          <button id="cancelRecoveryBtn" type="button">Back to Sign In</button>
+        </form>
+
+        <div class="recovery-code-card" id="recoveryCodeCard" hidden>
+          <h2>Save This Recovery Code</h2>
+          <p>This code is shown once. Store it somewhere secure and separate from the Raspberry Pi.</p>
+          <output id="recoveryCodeOutput"></output>
+          <button class="primary" id="confirmRecoverySavedBtn" type="button">I Saved the Code</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="app-sticky-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img src="/mark.svg" alt="" data-brand-logo>
+          <div>
+            <p class="eyebrow">Hymn Console</p>
+            <h1>Hymn Player</h1>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button id="operatorModeMobileBtn" type="button">Operator Mode</button>
+          <div class="account-menu" id="accountMenu">
+            <button class="account-badge" id="accountBadge" type="button" aria-haspopup="menu" aria-expanded="false"></button>
+          </div>
+          <div class="status is-ready" id="status" aria-live="polite">Ready</div>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="App sections">
+        <button class="tab active" data-tab="service" type="button">Service</button>
+        <button class="tab" data-tab="library" type="button">Library</button>
+        <button class="tab" data-tab="settings" type="button">Settings</button>
+        <button class="tab" data-tab="help" type="button">Help</button>
+        <button class="tab theme-toggle" id="themeToggle" type="button" aria-label="Switch color mode">Dark</button>
+        <button class="operator-nav-button" id="operatorModeBtn" type="button">Operator Mode</button>
+      </nav>
+
+      <div class="service-top-controls">
+        <section class="service-section service-player">
+          <div class="now-playing">
+            <div class="now-playing-head">
+              <div>
+                <p class="eyebrow">Now Playing</p>
+                <h2 id="nowTitle">Choose a hymn</h2>
+                <p id="nowMeta">Select a hymn from the service queue.</p>
+              </div>
+              <button id="lyricsToggle" type="button" aria-expanded="false">Lyrics</button>
+            </div>
+          </div>
+
+          <audio id="audio" preload="metadata"></audio>
+
+          <div class="transport">
+            <button id="prevBtn" type="button" title="Previous" aria-label="Previous"><span class="transport-icon prev" aria-hidden="true"></span></button>
+            <button id="playBtn" type="button" class="play" title="Play" aria-label="Play" data-state="play"><span class="transport-icon play-symbol" aria-hidden="true"></span></button>
+            <button id="stopBtn" type="button" title="Stop" aria-label="Stop"><span class="transport-icon stop" aria-hidden="true"></span></button>
+            <button id="nextBtn" type="button" title="Next" aria-label="Next"><span class="transport-icon next" aria-hidden="true"></span></button>
+            <button id="repeatBtn" type="button" title="Repeat current hymn" aria-label="Repeat current hymn">
+              <svg class="transport-svg repeat-svg" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 11a8 8 0 1 1 2.35 5.65"></path>
+                <path d="M3 5v6h6"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="meters">
+            <span id="currentTime">0:00</span>
+            <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek">
+            <span id="duration">0:00</span>
+          </div>
+        </section>
+
+        <section class="lyrics-sheet collapsed" id="lyricsSheet" role="dialog" aria-modal="false" aria-labelledby="lyricsTitle" aria-live="polite">
+          <div class="lyrics-sheet-head">
+            <div>
+              <p class="eyebrow">Lyrics</p>
+              <h3 id="lyricsTitle">Choose a hymn</h3>
+              <p id="lyricsMeta">Lyrics will appear here when the selected hymn has them.</p>
+            </div>
+            <div class="lyrics-window-actions">
+              <div class="lyrics-mode" role="group" aria-label="Lyrics display mode">
+                <button type="button" class="active" data-lyrics-mode="lyrics">Lyrics</button>
+                <button type="button" data-lyrics-mode="large">Large Text</button>
+              </div>
+              <button id="lyricsCloseBtn" class="lyrics-close" type="button" aria-label="Close lyrics">X</button>
+            </div>
+          </div>
+          <div class="lyrics-content" id="lyricsContent"></div>
+        </section>
+
+        <section class="service-section playback-settings">
+          <div class="section-label compact-label">
+            <p class="eyebrow">Playback Settings</p>
+            <div class="playback-header-actions">
+              <button class="section-toggle" id="playbackToggle" type="button" aria-expanded="false">Show</button>
+            </div>
+          </div>
+          <div class="control-grid collapsed" id="playbackControls">
+            <label class="playback-output-control">
+              <span>Audio Output</span>
+              <select id="audioOutput">
+                <option value="server">Sound System</option>
+                <option value="device">This Device</option>
+              </select>
+            </label>
+            <label class="playback-plan-control">
+              <span>Service Plans</span>
+              <button id="plansBtn" class="playback-plans-button" type="button">Plans</button>
+            </label>
+            <label class="reset-control"><span data-reset="fadeIn">Fade In</span><span class="control-row"><input id="fadeIn" type="number" min="0" max="15" step="0.5" value="1.5"><button type="button" class="reset-btn" data-reset="fadeIn" title="Reset fade in">Reset</button></span></label>
+            <label class="reset-control"><span data-reset="volume">Volume <strong id="volumeValue">90%</strong></span><span class="control-row"><input id="volume" type="range" min="0" max="1" step="0.01" value="0.9"><button type="button" class="reset-btn" data-reset="volume" title="Reset volume">Reset</button></span></label>
+            <label class="reset-control"><span data-reset="speed">Speed <strong id="speedValue">1.00x</strong></span><span class="control-row"><input id="speed" type="range" min="0.75" max="1.25" step="0.01" value="1"><button type="button" class="reset-btn" data-reset="speed" title="Reset speed">Reset</button></span></label>
+            <label class="reset-control"><span data-reset="fadeOut">Fade Out</span><span class="control-row"><input id="fadeOut" type="number" min="0" max="20" step="0.5" value="2"><button type="button" class="reset-btn" data-reset="fadeOut" title="Reset fade out">Reset</button></span></label>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <main class="layout">
+      <section class="library-panel" data-panel="library">
+        <div class="panel-head">
+          <div>
+            <h2>Hymn Library</h2>
+            <p id="libraryCount">0 hymns</p>
+          </div>
+          <button class="icon-button" id="refreshBtn" title="Refresh library" aria-label="Refresh library">&#8635;</button>
+        </div>
+
+        <div class="library-tools">
+          <input class="search" id="searchInput" placeholder="Search title, page, key, theme, notes">
+          <div class="theme-search-row">
+            <label><span>Hymn Theme</span><input id="themeSearchInput" list="themeOptions" placeholder="All themes"></label>
+            <button id="clearThemeSearchBtn" type="button">Clear</button>
+          </div>
+          <datalist id="themeOptions"></datalist>
+          <div class="az-jump" id="azJump" aria-label="Alphabetical hymn jump"></div>
+        </div>
+        <div class="hymn-list" id="hymnList"></div>
+        <button class="load-more" id="loadMoreBtn" hidden>Show more hymns</button>
+      </section>
+
+      <section class="player-panel" data-panel="service">
+
+        <section class="service-section queue-section">
+          <div class="queue-head">
+            <div>
+              <h2>Service Queue <span class="plan-name" id="loadedPlanName"></span></h2>
+              <p>Line up hymns in order for the service.</p>
+            </div>
+            <div class="queue-header-actions">
+              <button id="savePlanBtn" type="button">Save</button>
+              <button id="clearQueueBtn" type="button">Clear</button>
+            </div>
+          </div>
+          <div class="health-panel" id="healthPanel"></div>
+          <div class="queue" id="queue"></div>
+        </section>
+      </section>
+
+      <aside class="details-panel" id="detailsPanel" data-panel="edit">
+        <h2>Hymn Details</h2>
+        <p class="muted">Select a hymn to edit page numbers, notes, and playback structure.</p>
+      </aside>
+
+      <section class="settings-panel" data-panel="settings">
+        <div class="panel-head">
+          <div>
+            <h2>Settings</h2>
+            <p>Manage files, backups, and maintenance tools.</p>
+          </div>
+        </div>
+        <input class="search" id="settingsSearch" placeholder="Search settings">
+
+        <section class="settings-section" id="accountSecuritySection">
+          <h3>Accounts & Security</h3>
+          <div class="settings-actions">
+            <button id="serviceLockBtn" type="button">Lock Service</button>
+            <button id="settingsLogoutBtn" type="button">Logout</button>
+          </div>
+          <p class="muted">Signed in as <strong id="securityCurrentUser">Unknown</strong></p>
+          <div id="accountAdminTools">
+            <h4>User Accounts</h4>
+            <div id="accountCreateTools">
+            <div class="display-grid">
+              <label><span>Username</span><input id="newAccountUsername" autocomplete="off"></label>
+              <label><span>Temporary Password</span><input id="newAccountPassword" type="password" autocomplete="new-password"></label>
+            </div>
+            <fieldset class="permission-picker">
+              <legend>User Permissions</legend>
+              <div class="permission-grid" id="newAccountPermissions"></div>
+            </fieldset>
+            <button id="createAccountBtn" type="button">Create Account</button>
+            </div>
+            <div class="account-list" id="accountList"></div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Playback Defaults</h3>
+          <div class="control-grid" id="playbackDefaultsPermissionGroup">
+            <label><span>Default Volume</span><input id="defaultVolume" type="number" min="0" max="100" step="1"></label>
+            <label><span>Default Speed</span><input id="defaultSpeed" type="number" min="0.75" max="1.25" step="0.01"></label>
+            <label><span>Fade In</span><input id="defaultFadeIn" type="number" min="0" max="15" step="0.5"></label>
+            <label><span>Fade Out</span><input id="defaultFadeOut" type="number" min="0" max="20" step="0.5"></label>
+          </div>
+          <label class="check-control" id="queueAlertsPermissionGroup"><input id="serviceQueueAlertsEnabled" type="checkbox"><span>Show service queue alerts, errors, and warnings</span></label>
+          <button id="saveAudioDefaultsBtn" type="button">Save Playback Settings</button>
+        </section>
+
+        <section class="settings-section">
+          <h3>Library Management</h3>
+          <div id="uploadPermissionGroup">
+          <button class="section-toggle" id="uploadToggle" type="button" aria-expanded="false">Show Upload</button>
+          <form id="uploadForm" class="upload-box collapsed">
+            <label>
+              <span>Upload MP3 Files</span>
+              <input type="file" name="audio" accept="audio/mpeg,.mp3" multiple required>
+            </label>
+            <div class="upload-grid">
+              <label><span>Title</span><input name="title" placeholder="Amazing Grace"></label>
+              <label><span>Page</span><input name="page" placeholder="104"></label>
+              <label><span>Key</span><input name="key" placeholder="G"></label>
+              <label><span>Tempo</span><input name="tempo" placeholder="92"></label>
+              <label><span>Themes</span><input name="themes" placeholder="Invitation, Grace, Closing"></label>
+            </div>
+            <label class="check-control"><input id="autoLookupUpload" name="autoLookup" type="checkbox" checked><span>Auto lookup after upload</span></label>
+            <button class="primary" type="submit">Upload</button>
+          </form>
+          </div>
+          <div id="csvPermissionGroup">
+          <h4>Library CSV</h4>
+          <div class="settings-actions">
+            <button id="downloadLibraryCsvBtn" type="button">Download Song CSV</button>
+            <label class="file-label" id="libraryCsvUploadLabel">Upload Song CSV<input id="libraryCsvInput" type="file" accept=".csv,text/csv"></label>
+            <button id="uploadLibraryCsvBtn" type="button">Apply Song CSV</button>
+          </div>
+          </div>
+          <div id="lookupPermissionGroup">
+          <h4>AI Lookup</h4>
+          <p class="muted">Upload a hymn or select one from the Library, then let AI scan the web and audio to suggest title, key, tempo, themes, lyrics, and structure timing.</p>
+          <div class="assistant-report" id="assistantReport"><p class="muted">AI scan results will appear in a review window before anything is saved.</p></div>
+          <div class="display-grid" id="lookupSettingsFields">
+            <label class="check-control"><input id="autoLookupEnabled" type="checkbox"><span>Run lookup after new uploads</span></label>
+            <label class="check-control"><input id="builtInAiLookupEnabled" type="checkbox"><span>Use built-in OpenAI lookup</span></label>
+            <label class="check-control"><input id="aiWebSearchEnabled" type="checkbox"><span>Allow AI web search</span></label>
+            <label class="check-control"><input id="aiSmartBuildEnabled" type="checkbox"><span>Include AI Smart Build timing</span></label>
+            <label><span>OpenAI Model</span><input id="openAiModel" placeholder="gpt-4.1-mini"></label>
+            <label><span>OpenAI API Key</span><input id="openAiApiKey" type="password" autocomplete="off" placeholder="sk-..."></label>
+          </div>
+          <p class="muted" id="openAiKeyStatus">OpenAI key status loading...</p>
+          <div class="settings-actions">
+            <button id="saveLookupSettingsBtn" type="button">Save Lookup Settings</button>
+            <button id="clearOpenAiKeyBtn" type="button">Clear OpenAI Key</button>
+          </div>
+          </div>
+          <div id="trashPermissionGroup">
+          <h4>Trash</h4>
+          <div class="trash-summary" id="trashSummary">Trash can loading...</div>
+          <div class="settings-actions">
+            <button id="refreshTrashBtn" type="button">Refresh Trash</button>
+            <button id="emptyTrashBtn" type="button">Empty Trash Can</button>
+          </div>
+          <div class="trash-list" id="trashList"></div>
+          </div>
+          <div id="backupPermissionGroup">
+          <h4>Backups</h4>
+          <p class="muted">To restore: choose a Hymn Console backup file, verify its name, then select Restore Selected Backup and confirm. A complete restore signs out every device.</p>
+          <div class="display-grid" id="backupSettingsFields">
+            <label><span>Off-Device Backup Path</span><input id="backupTargetPath" placeholder="/media/usb/HymnConsoleBackups"></label>
+            <label><span>Backup Retention (days)</span><input id="backupRetentionDays" type="number" min="1" max="365" value="14"></label>
+          </div>
+          <div class="backup-tools">
+            <button id="saveBackupSettingsBtn" type="button">Save Backup Settings</button>
+            <button id="backupBtn" type="button">Download Complete Backup</button>
+            <button id="localBackupBtn" type="button">Run Complete Backup</button>
+            <label class="restore-label"><span>Restore Backup</span><input id="restoreInput" type="file" accept=".tar.gz,.tgz,application/gzip,application/json,.json"></label>
+            <span class="muted" id="restoreSelectedName">No backup selected.</span>
+            <button id="restoreSelectedBackupBtn" type="button" disabled>Restore Selected Backup</button>
+          </div>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <div class="section-title-row">
+            <h3>Network & System</h3>
+            <button id="refreshNetworkBtn" type="button">Refresh Network</button>
+          </div>
+          <div id="networkPermissionGroup">
+          <p class="network-address" id="networkAddress">Network address loading...</p>
+          <div class="display-grid">
+            <label><span>Preferred IP / URL</span><input id="customIpAddress" placeholder="http://192.168.1.50:8080"></label>
+            <label><span>DNS Name</span><input id="customDnsName" placeholder="hymnconsole.local"></label>
+            <label><span>Subnet</span><input id="customSubnet" placeholder="255.255.255.0"></label>
+            <label><span>Gateway</span><input id="customGateway" placeholder="192.168.1.1"></label>
+            <label><span>Network Notes</span><input id="customNetworkNotes" placeholder="Sanctuary Wi-Fi, static DHCP reservation, etc."></label>
+            <label><span>Network Mode</span><select id="networkModeSelect"><option value="dhcp">DHCP</option><option value="static">Static</option></select></label>
+            <label><span>Hymn Storage</span><select id="storageModeSelect"><option value="internal">Internal Storage</option><option value="usb">USB Storage</option></select></label>
+            <label><span>USB Storage Path</span><input id="usbStoragePath" placeholder="/media/pi/HYMNS"></label>
+          </div>
+          <div class="settings-actions">
+            <button id="saveNetworkBtn" type="button">Save Network Info</button>
+          </div>
+          </div>
+          <div class="settings-actions">
+            <button id="systemCheckBtn" type="button">Refresh System Check</button>
+            <button id="downloadDiagnosticsBtn" type="button">Download Diagnostics</button>
+            <button id="restartAppBtn" type="button">Restart App</button>
+            <button id="restartPiBtn" class="danger" type="button">Restart Raspberry Pi</button>
+          </div>
+          <div class="stat-grid" id="storageStatus"></div>
+          <div class="stat-grid" id="resourceStats"></div>
+          <div class="remote-access-card" id="rustDeskStatus">
+            <h4>RustDesk Remote Access</h4>
+            <p class="muted">Administrator access is required to view RustDesk remote support details.</p>
+          </div>
+          <div class="check-list" id="startupCheckList"></div>
+          <div class="controller-list" id="controllerList"></div>
+        </section>
+
+        <section class="settings-section">
+          <h3>Appearance</h3>
+          <div class="display-grid">
+            <label><span>App Name</span><input id="customAppName" placeholder="Hymn Console"></label>
+            <label><span>Interface Size</span><select id="displayModeSelect"><option value="standard">Standard</option><option value="large">Large Touch Controls</option><option value="operator">Presentation / Operator</option></select></label>
+            <label><span>Color Palette</span><select id="colorPaletteSelect">
+              <option value="chapel-blue">Chapel Blue</option>
+              <option value="stained-glass">Stained Glass</option>
+              <option value="morning-grace">Morning Grace</option>
+              <option value="heritage-gold">Heritage Gold</option>
+              <option value="rosewood-hymnal">Rosewood Hymnal</option>
+              <option value="quiet-sage">Quiet Sage</option>
+              <option value="sanctuary-slate">Sanctuary Slate</option>
+              <option value="revival-sunset">Revival Sunset</option>
+              <option value="communion-plum">Communion Plum</option>
+              <option value="mission-teal">Mission Teal</option>
+              <option value="linen-and-cedar">Linen & Cedar</option>
+              <option value="joyful-bright">Joyful Bright</option>
+            </select></label>
+            <div class="logo-manager">
+              <div class="logo-preview-field">
+                <span>Logo Preview</span>
+                <div class="logo-preview-box"><img id="appearanceLogoPreview" src="/mark.svg" alt=""></div>
+              </div>
+              <div class="logo-picker">
+                <span>Custom Logo</span>
+                <input id="customLogoInput" class="sr-only" type="file" accept="image/svg+xml,image/png,image/jpeg,image/webp">
+                <button id="chooseLogoBtn" type="button">Choose Custom Logo</button>
+                <p id="customLogoFileName" class="logo-file-name">No new logo selected</p>
+                <small class="field-hint">Recommended: square PNG or SVG, 512 x 512 px, transparent background.</small>
+              </div>
+            </div>
+          </div>
+          <div class="settings-actions">
+            <button id="saveAppearanceBtn" type="button">Save Appearance</button>
+            <button id="saveLogoBtn" type="button" disabled>Save Logo</button>
+            <button id="removeCustomLogoBtn" type="button">Remove Custom Logo</button>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <div class="section-title-row">
+            <h3>System Log</h3>
+            <div class="settings-actions">
+              <button id="refreshLogBtn" type="button">Refresh</button>
+              <button id="resetLogBtn" type="button">Reset Log</button>
+            </div>
+          </div>
+          <div class="stat-grid" id="systemLogStats"></div>
+          <div class="controller-list" id="logDeviceList"></div>
+          <div class="log-report" id="logReport" aria-live="polite">
+            <p class="muted">Log loading...</p>
+          </div>
+        </section>
+      </section>
+
+      <section class="help-panel" data-panel="help">
+        <h2>Help</h2>
+        <div class="help-grid">
+          <div>
+            <h3>Run A Service</h3>
+            <p>Open Library, add hymns to the Service Queue, choose the audio output, select the first hymn, then press Play. The next hymn waits until you choose it.</p>
+          </div>
+          <div>
+            <h3>Sound Output</h3>
+            <p>Use This Device for phone, tablet, or laptop speakers. Use Sound System when the Raspberry Pi is connected to the church audio system.</p>
+          </div>
+          <div>
+            <h3>AirPlay From iPhone</h3>
+            <p>The Raspberry Pi installer enables an AirPlay receiver named from the app name plus AirPlay. On iPhone, open Control Center, tap the audio output icon, and select Hymn Console AirPlay or your custom app name followed by AirPlay.</p>
+          </div>
+          <div>
+            <h3>Queue Controls</h3>
+            <p>Use the arrows to reorder hymns. Use verse count and Intro, Verses, Chorus checkboxes to shape what plays. On iPhone, the queue uses a compact touch layout.</p>
+          </div>
+          <div>
+            <h3>Plans</h3>
+            <p>Use Plans to load a saved order of service. Use Save on the Service page to name and store the current queue.</p>
+          </div>
+          <div>
+            <h3>Library And Editing</h3>
+            <p>Use search, hymn theme search, or the alphabet bar to find hymns. Select a hymn from the Library to edit page number, key, tempo, themes, notes, audio defaults, and song structure.</p>
+          </div>
+          <div>
+            <h3>Smart Build</h3>
+            <p>Smart Build estimates intro, verse, and chorus timing. Review and adjust segment times before relying on it for a service.</p>
+          </div>
+          <div>
+            <h3>Assistant Tools</h3>
+            <p>In Library Management, use auto lookup to suggest hymn title, key, tempo, themes, and public-domain lyrics. Review suggestions before applying them.</p>
+          </div>
+          <div>
+            <h3>Settings</h3>
+            <p>Settings are grouped by accounts, playback defaults, library management, network/system, appearance, and logs. The built-in administrator creates users and grants only the service and audio permissions each person needs.</p>
+          </div>
+          <div>
+            <h3>Network Info</h3>
+            <p>In Network & System, use DHCP by default or save static network details. The DNS name updates the Raspberry Pi hostname on Linux.</p>
+          </div>
+          <div>
+            <h3>Account Recovery</h3>
+            <p>During first-time setup, save the unique administrator recovery code somewhere separate from the Raspberry Pi. Use Recover Administrator on the sign-in screen if the password is lost.</p>
+          </div>
+          <div>
+            <h3>Before Worship</h3>
+            <p>Refresh System Check, confirm the audio output and queue health, load the service plan, select the first hymn, then Lock Service if desired.</p>
+          </div>
+        </div>
+        <div class="guide-downloads">
+          <h3>Full Guides</h3>
+          <p>Download complete instructions for volunteers, administrators, and Raspberry Pi setup.</p>
+          <div class="settings-actions">
+            <a class="button-link primary" href="/api/guides/user-guide.pdf" download>User Guide PDF</a>
+            <a class="button-link" href="/api/guides/installation-guide.pdf" download>Installation Guide PDF</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <button id="operatorExitBtn" class="operator-exit" type="button" aria-label="Exit Operator Mode">X</button>
+
+    <div class="account-dropdown" id="accountDropdown" role="menu" hidden>
+      <button id="logoutBtn" type="button" role="menuitem">Sign Out</button>
+    </div>
+
+    <div class="modal-backdrop" id="plansModal" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="plansModalTitle">
+        <div class="modal-head">
+          <h2 id="plansModalTitle">Saved Plans</h2>
+          <button id="closePlansBtn" type="button" aria-label="Close saved plans">X</button>
+        </div>
+        <div class="plan-manager" id="planManager"></div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="savePlanModal" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="savePlanModalTitle">
+        <div class="modal-head">
+          <h2 id="savePlanModalTitle">Save Service Plan</h2>
+          <button id="closeSavePlanBtn" type="button" aria-label="Close save plan">X</button>
+        </div>
+        <label><span>Plan Name</span><input id="savePlanName" placeholder="Sunday Morning"></label>
+        <div class="modal-actions">
+          <button id="confirmSavePlanBtn" class="primary" type="button">Save Plan</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="accountPasswordModal" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="accountPasswordTitle">
+        <div class="modal-head">
+          <h2 id="accountPasswordTitle">Reset Password</h2>
+          <button id="closeAccountPasswordBtn" type="button" aria-label="Close password reset">X</button>
+        </div>
+        <label><span>New Password</span><input id="accountPasswordInput" type="password" autocomplete="new-password" minlength="10"></label>
+        <div class="modal-actions">
+          <button id="confirmAccountPasswordBtn" class="primary" type="button">Reset Password</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="accountPermissionsModal" hidden>
+      <section class="modal permissions-modal" role="dialog" aria-modal="true" aria-labelledby="accountPermissionsTitle">
+        <div class="modal-head">
+          <h2 id="accountPermissionsTitle">Edit User Permissions</h2>
+          <button id="closeAccountPermissionsBtn" type="button" aria-label="Close permission editor">X</button>
+        </div>
+        <p class="muted">Changes sign this user out so the new permissions take effect immediately.</p>
+        <div class="permission-grid" id="editAccountPermissions"></div>
+        <div class="modal-actions">
+          <button id="saveAccountPermissionsBtn" class="primary" type="button">Save Permissions</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="lookupModal" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="lookupModalTitle">
+        <div class="modal-head">
+          <h2 id="lookupModalTitle">Review Auto Lookup</h2>
+          <button id="closeLookupBtn" type="button" aria-label="Close auto lookup">X</button>
+        </div>
+        <div class="lookup-grid" id="lookupReview"></div>
+        <div class="modal-actions">
+          <button id="applyLookupBtn" class="primary" type="button">Apply Suggestions</button>
+        </div>
+      </section>
+    </div>
+
+    <template id="hymnTemplate">
+      <article class="hymn-card">
+        <button class="hymn-main"></button>
+        <button class="small add">Add</button>
+      </article>
+    </template>
+
+    <script src="/app.js?v=20260724-5"></script>
+  </body>
+</html>

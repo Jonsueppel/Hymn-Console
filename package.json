@@ -1,0 +1,16 @@
+{
+  "name": "hymn-console",
+  "version": "2.2.0",
+  "private": true,
+  "description": "Raspberry Pi friendly church hymn library and hymn console.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/app.js && node --check lib/storage.js && node --check lib/auth.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "test:soak": "node scripts/soak-test.js"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

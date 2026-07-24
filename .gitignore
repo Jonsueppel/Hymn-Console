@@ -1,0 +1,43 @@
+# Runtime data
+data/
+media/
+backups/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+
+# Uploaded/generated files
+dist/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+*.pfx
+
+# Dependencies and build caches
+node_modules/
+.npm/
+.cache/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
