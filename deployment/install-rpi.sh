@@ -100,12 +100,12 @@ RUSTDESK
 
 echo "Installing Hymn Console to ${APP_DIR}"
 apt-get update
+install_nodejs
 apt-get install -y \
-  npm ffmpeg mpv rsync alsa-utils shairport-sync curl ca-certificates gnupg openssl unzip
+  ffmpeg mpv rsync alsa-utils shairport-sync curl ca-certificates gnupg openssl unzip
 for optional_package in pulseaudio-utils pipewire pipewire-audio-client-libraries wireplumber avahi-daemon libnss-mdns ufw jq; do
   apt-get install -y "${optional_package}" || echo "Optional package ${optional_package} could not be installed; continuing."
 done
-install_nodejs
 install_rustdesk || true
 
 mkdir -p "${APP_DIR}" "${APP_DIR}/data" "${APP_DIR}/media" "${APP_DIR}/media/.trash" "${APP_DIR}/data/backups" "${APP_DIR}/logs" "${USB_MOUNT}" "${RELEASE_ROOT}"
