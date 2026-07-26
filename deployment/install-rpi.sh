@@ -8,6 +8,7 @@ SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
 RUN_USER="${RUN_USER:-${SUDO_USER:-$(logname 2>/dev/null || echo pi)}}"
 APP_DISPLAY_NAME="${APP_DISPLAY_NAME:-}"
 AIRPLAY_NAME="${AIRPLAY_NAME:-}"
+AIRPLAY_OUTPUT_DEVICE="${AIRPLAY_OUTPUT_DEVICE:-hw:0}"
 HOSTNAME_NAME="${HOSTNAME_NAME:-hymnconsole}"
 PORT="${PORT:-8080}"
 USB_MOUNT="${USB_MOUNT:-/mnt/hymns}"
@@ -102,7 +103,7 @@ echo "Installing Hymn Console to ${APP_DIR}"
 apt-get update
 install_nodejs
 apt-get install -y \
-  ffmpeg mpv rsync alsa-utils shairport-sync curl ca-certificates gnupg openssl unzip
+  ffmpeg mpv rsync alsa-utils shairport-sync curl ca-certificates gnupg openssl unzip avahi-utils
 for optional_package in pulseaudio-utils pipewire pipewire-audio-client-libraries wireplumber avahi-daemon libnss-mdns ufw jq; do
   apt-get install -y "${optional_package}" || echo "Optional package ${optional_package} could not be installed; continuing."
 done
@@ -191,6 +192,7 @@ general =
 
 alsa =
 {
+  output_device = "${AIRPLAY_OUTPUT_DEVICE}";
   mixer_control_name = "Master";
 };
 
@@ -395,8 +397,16 @@ if have_command ufw; then
     echo "Could not detect the local subnet. Port ${PORT} was not opened in UFW. Set TRUSTED_SUBNET or ALLOW_UNRESTRICTED_WEB=1 and rerun the installer."
   fi
   ufw allow 5353/udp >/dev/null 2>&1 || true
+  ufw allow 1900/udp >/dev/null 2>&1 || true
+  ufw allow 3689/tcp >/dev/null 2>&1 || true
+  ufw allow 5000/tcp >/dev/null 2>&1 || true
+  ufw allow 5001/tcp >/dev/null 2>&1 || true
   ufw allow 7000:7001/tcp >/dev/null 2>&1 || true
-  ufw allow 60000:60010/udp >/dev/null 2>&1 || true
+  ufw allow 7100/tcp >/dev/null 2>&1 || true
+  ufw allow 319/udp >/dev/null 2>&1 || true
+  ufw allow 320/udp >/dev/null 2>&1 || true
+  ufw allow 60000:61000/udp >/dev/null 2>&1 || true
+  ufw allow 60000:61000/tcp >/dev/null 2>&1 || true
   ufw --force enable >/dev/null 2>&1 || true
 fi
 

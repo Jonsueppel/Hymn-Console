@@ -87,6 +87,14 @@ sudo APP_DISPLAY_NAME="Tri-City Hymn Console" RUN_USER=admin bash deployment/ins
 
 AirPlay uses the Raspberry Pi sound output. If AirPlay starts while Hymn Console Sound System playback is active, the installer config attempts to stop Hymn Console playback first so the two audio sources do not compete.
 
+The installer defaults Shairport Sync to ALSA device `hw:0`, which matched the tested Raspberry Pi sound output. If your sound system uses a different ALSA device, rerun the installer with:
+
+```bash
+sudo AIRPLAY_OUTPUT_DEVICE="hw:1" RUN_USER=pi bash deployment/install-rpi.sh
+```
+
+When `ufw` is installed, the installer opens the app port, mDNS, and common AirPlay ports so iPhone and iPad devices can discover and stream audio to the Pi.
+
 ## Storage
 
 By default:
