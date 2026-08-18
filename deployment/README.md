@@ -28,6 +28,14 @@ sudo RUN_USER=admin USB_UUID=YOUR-USB-UUID USB_MOUNT=/mnt/hymns bash deployment/
 http://raspberry-pi-ip-address:8080
 ```
 
+Friendly network address after installation:
+
+```text
+http://hymnconsole.local:8080
+```
+
+The shorter `http://hymnconsole:8080` address requires local DNS support from the router.
+
 ## Recommended Raspberry Pi Setup
 
 - Raspberry Pi 4 or newer.
@@ -39,6 +47,38 @@ http://raspberry-pi-ip-address:8080
 - `ffmpeg` and `mpv` for Sound System playback and smooth live fade control.
 - `shairport-sync` for AirPlay receiving from iPhone, iPad, and macOS devices.
 - RustDesk for remote support when the Pi can reach the internet during installation.
+
+## How It All Connects
+
+```text
+Phone / Tablet / Laptop
+  Browser control at http://hymnconsole.local:8080
+              |
+              v
+Church Wi-Fi / Ethernet network
+              |
+              v
+Raspberry Pi running Hymn Console
+  - Node.js web app on port 8080
+  - SQLite data, service plans, users, settings
+  - MP3 storage on SD card or USB drive
+  - Shairport Sync AirPlay receiver
+  - RustDesk remote support
+              |
+              v
+Audio output from Raspberry Pi
+  USB audio / HDMI / headphone output
+              |
+              v
+Church mixer, amplifier, or powered speakers
+```
+
+Playback paths:
+
+- `This Device`: audio plays from the phone, tablet, or laptop browser.
+- `Sound System`: Hymn Console tells the Raspberry Pi to play the selected hymn through the connected sound system.
+- `AirPlay`: an iPhone, iPad, or Mac streams audio wirelessly to `Hymn Console AirPlay`, then the Pi sends it to the same sound output.
+- `Remote Support`: RustDesk lets an administrator or support person connect to the Pi for maintenance.
 
 ## Service Commands
 
@@ -163,7 +203,8 @@ Then open the app, go to Settings, expand Network & System, and run the combined
 - Library, queue, and plans files are OK.
 - Storage location and free space look correct.
 - Sound System player reports `mpv and ffmpeg available`.
-- AirPlay speaker `Hymn Console` appears on an iPhone on the same network.
+- AirPlay speaker `Hymn Console AirPlay` or the custom app name followed by `AirPlay` appears on an iPhone on the same network.
+- RustDesk shows an ID and unattended password if remote support is needed.
 
 Run the installed self-test:
 

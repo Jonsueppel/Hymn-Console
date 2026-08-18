@@ -384,12 +384,21 @@ function guideSections(kind) {
         ]],
         ["Prepare Raspberry Pi OS", [
           "Install Raspberry Pi OS Lite or Desktop, enable SSH if remote administration is needed, connect to the church network, and run system updates before installing the app.",
-          "The included installer installs Node.js, ffmpeg, mpv, rsync, curl, ALSA utilities, and shairport-sync. These packages support the web app, Sound System playback, fades, Raspberry Pi volume control, and AirPlay receiving from Apple devices."
+          "The included installer installs Node.js, ffmpeg, mpv, rsync, curl, ALSA utilities, Avahi, shairport-sync, and optional RustDesk support. These packages support the web app, Sound System playback, fades, Raspberry Pi volume control, friendly local network names, AirPlay receiving from Apple devices, and remote support."
+        ]],
+        ["How The System Connects", [
+          "Phones, tablets, and laptops connect by browser to http://hymnconsole.local:8080 or the Raspberry Pi IP address. The devices are controllers; the Raspberry Pi is the server.",
+          "Connection diagram:",
+          "Phone / Tablet / Laptop browser -> Church Wi-Fi or Ethernet -> Raspberry Pi running Hymn Console -> MP3 storage on SD card or USB drive.",
+          "For Sound System playback: Raspberry Pi -> USB audio, headphone jack, or HDMI audio -> mixer, amplifier, or powered speakers.",
+          "For AirPlay playback: iPhone or iPad -> Wi-Fi AirPlay stream -> Shairport Sync on Raspberry Pi -> the same Raspberry Pi audio output -> sound system.",
+          "For remote support: support computer -> RustDesk relay/direct connection -> RustDesk service on Raspberry Pi -> administrator-approved maintenance."
         ]],
         ["Install Hymn Console", [
-          "Copy or extract the Hymn Console deployment package on the Raspberry Pi, then run sudo RUN_USER=admin bash deployment/install-rpi.sh from inside the extracted folder.",
+          "Clone the GitHub repository or copy the deployment package onto the Raspberry Pi. From inside the app folder, run sudo RUN_USER=pi bash deployment/install-rpi.sh unless your Pi uses a different service user.",
           "The installer copies the app to /opt/hymn-console, creates the hymn-console systemd service, enables startup on boot, creates data/media/trash/backup folders, sets permissions, and preserves existing data and media folders during updates.",
-          "The installer also configures a health-check timer, nightly midnight local backups, log rotation, firewall access for port 8080, AirPlay, and optional RustDesk remote access."
+          "The installer also configures a health-check timer, nightly midnight local backups, log rotation, firewall access for the app and AirPlay, a default hostname of hymnconsole, AirPlay, and optional RustDesk remote access.",
+          "After install, open http://hymnconsole.local:8080 or http://the-pi-ip-address:8080 from a device on the same network."
         ]],
         ["Storage Choices", [
           "Internal Storage uses the app media folder and is the simplest option for smaller hymn libraries.",
@@ -403,27 +412,30 @@ function guideSections(kind) {
         ["Network Access", [
           "Open http://hymnconsole.local:8080 or the Raspberry Pi IP address from phones, tablets, laptops, and the local Pi browser.",
           "Use DHCP by default. For a church installation, reserve the Pi address in the router or configure a static address only after confirming the correct subnet, gateway, and DNS.",
-          "The installer sets the Raspberry Pi hostname to hymnconsole by default. You can override it by running the installer with HOSTNAME_NAME=yourname."
+          "The installer sets the Raspberry Pi hostname to hymnconsole by default. You can override it by running the installer with HOSTNAME_NAME=yourname.",
+          "The short address http://hymnconsole:8080 requires router DNS support. The .local address is the recommended friendly address for Apple devices and many Windows devices."
         ]],
         ["Audio Setup", [
           "Connect the Raspberry Pi audio output to the church sound system. Test volume at a safe level before service.",
           "Use This Device when audio should play from the phone, tablet, or laptop. Use Sound System when the Raspberry Pi is connected to the church audio system.",
           "Sound System mode uses mpv and ffmpeg for smoother segment playback and fade control. The volume slider also attempts to adjust the Raspberry Pi output volume.",
-          "The installer also enables an AirPlay receiver named from the app name plus AirPlay. With the default app name, select Hymn Console AirPlay from iPhone Control Center to stream iPhone audio wirelessly to the Raspberry Pi sound output."
+          "The installer also enables an AirPlay receiver named from the app name plus AirPlay. With the default app name, select Hymn Console AirPlay from iPhone Control Center to stream iPhone audio wirelessly to the Raspberry Pi sound output.",
+          "If AirPlay connects but no sound is heard after firewall or audio changes, reboot the Pi and confirm speaker-test can play through the selected audio output."
         ]],
         ["Backup And Recovery", [
-          "Use Download Backup before major changes. Keep a backup on a different computer or USB drive.",
+          "Use Download Complete Backup before major changes. Keep a backup on a different computer, USB drive, or trusted network share.",
           "Deleted MP3s move to the trash can first. Empty the trash only after verifying the files are no longer needed.",
-          "A systemd backup timer saves a local backup every night at midnight. The app also keeps its own backup folder under /opt/hymn-console/data/backups."
+          "A systemd backup timer saves a local backup every night at midnight. Complete backups include the SQLite database, MP3 files, service plans, queue, settings, themes, custom logo, and RustDesk access file."
         ]],
         ["Remote Access", [
           "The installer attempts to install RustDesk and set an unattended password for support.",
           "Sign in as an administrator, open Settings, expand Network & System, and read the RustDesk ID and password from the RustDesk Remote Access card.",
-          "If RustDesk is not installed because the Pi was offline or no package was available for the architecture, rerun the installer later or install RustDesk manually."
+          "If RustDesk is not installed because the Pi was offline or no package was available for the architecture, rerun the installer later or install RustDesk manually.",
+          "If the password shows as not configured, set it on the Pi with sudo rustdesk --password, then update /opt/hymn-console/data/rustdesk-access.json."
         ]],
         ["Maintenance Checklist", [
           "Before Sunday: confirm network access, refresh System Check, confirm the selected hymn storage location and audio output, load the service plan, and select the first hymn.",
-          "Monthly: download a backup, check free storage, review the trash can, update Raspberry Pi OS, and test audio from the sound system."
+          "Monthly: download a backup, check free storage, review the trash can, update Raspberry Pi OS, test Sound System playback, test AirPlay, and verify RustDesk remote access if support is needed."
         ]]
       ]
     };
@@ -434,7 +446,8 @@ function guideSections(kind) {
     sections: [
       ["Overview", [
         "Hymn Console is a local web app for churches that need reliable hymn playback without a pianist. It stores MP3 hymns, builds service queues, and plays audio from either the device browser or the Raspberry Pi sound system.",
-        "The app is designed for phones, tablets, laptops, and a Raspberry Pi connected to the church audio system."
+        "The app is designed for phones, tablets, laptops, and a Raspberry Pi connected to the church audio system.",
+        "The Raspberry Pi is the server and sound-system player. Phones, tablets, and laptops are controllers that connect through the church network."
       ]],
       ["Running A Service", [
         "Open the Library, search for a hymn, and press Add to place it in the Service Queue. Add hymns in the order they will be used.",
@@ -453,7 +466,8 @@ function guideSections(kind) {
       ["AirPlay From iPhone", [
         "The Raspberry Pi installer enables an AirPlay receiver named from the app name plus AirPlay using shairport-sync.",
         "On iPhone, open Control Center, tap the audio output icon, and select Hymn Console AirPlay or your custom app name followed by AirPlay. Audio from the iPhone will play through the Raspberry Pi sound output.",
-        "AirPlay is useful for occasional wireless audio from an Apple device. For the normal service queue, Sound System mode is still the most direct and reliable playback path."
+        "AirPlay is useful for occasional wireless audio from an Apple device. For the normal service queue, Sound System mode is still the most direct and reliable playback path.",
+        "If AirPlay connects but no sound is heard, reboot the Pi and confirm the Pi audio output works before service."
       ]],
       ["RustDesk Remote Support", [
         "If RustDesk was installed by the Raspberry Pi installer, sign in as an administrator, open Settings, expand Network & System, and use the RustDesk ID and password shown there for remote support.",
@@ -462,7 +476,8 @@ function guideSections(kind) {
       ["Library", [
         "Use search, hymn theme search, and the alphabet bar to find hymns quickly. Signed-in operators can add hymns to the service queue.",
         "Administrator accounts can edit hymns, upload single or bulk MP3 files, import or export CSV data, recover trash, manage backups, and configure AI lookup.",
-        "Bulk upload lets you select multiple MP3 files at one time. When multiple files are selected, Hymn Console names each hymn from its file name so one typed title is not copied to every hymn."
+        "Bulk upload lets you select multiple MP3 files at one time. When multiple files are selected, Hymn Console names each hymn from its file name so one typed title is not copied to every hymn.",
+        "Use Download Song CSV to review the library in a spreadsheet. Reupload the CSV after editing hymn metadata such as title, page, key, tempo, default verses, themes, notes, lyrics, defaults, fades, and track length."
       ]],
       ["Hymn Storage", [
         "In Settings, expand Network & System and choose Internal Storage or USB Storage. Internal Storage uses the app media folder. USB Storage uses the mounted USB path you provide.",
@@ -483,6 +498,7 @@ function guideSections(kind) {
       ]],
       ["Before Worship Checklist", [
         "Refresh System Check, verify Sound Output, load the saved plan, check the first hymn, confirm volume, and lock the service queue if desired.",
+        "Test Sound System playback and AirPlay if either will be used during the service.",
         "Keep the Raspberry Pi powered, avoid unplugging the audio cable during playback, and use a wired network when possible for the most stable control experience."
       ]]
     ]
