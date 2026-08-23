@@ -1881,7 +1881,7 @@ function startServerAudioConcat() {
     joinFilter,
     ...(postFilters.length ? [`[joined]${postFilters.join(",")}[out]`] : [])
   ].join(";");
-  const ffmpegArgs = ["-loglevel", "quiet", "-i", item.filePath, "-filter_complex", filterGraph, "-map", "[out]", "-f", "wav", "pipe:1"];
+  const ffmpegArgs = ["-loglevel", "warning", "-i", item.filePath, "-filter_complex", filterGraph, "-map", "[out]", "-f", "wav", "pipe:1"];
   const ffmpegProcess = spawn(ffmpeg, ffmpegArgs, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
   serverPlayer.ipcPath = path.join(os.tmpdir(), `hymn-console-mpv-${process.pid}.sock`);
   try {
@@ -1889,7 +1889,9 @@ function startServerAudioConcat() {
   } catch {}
   const mpvArgs = [
     "--no-video",
-    "--really-quiet",
+    "--msg-level=all=warn",
+    "--term-playing-msg=",
+    "--osd-level=0",
     "--force-window=no",
     `--input-ipc-server=${serverPlayer.ipcPath}`,
     "--volume=100",
