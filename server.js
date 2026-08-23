@@ -1864,6 +1864,30 @@ function startServerAudioConcat() {
     startServerAudioQueue();
     return;
   }
+  if (serverPlayer.queue.length === 1 && !Number(serverPlayer.queue[0].duration || 0)) {
+    serverPlayer.totalDuration = 0;
+    const itemVolume = Math.max(0, Math.min(2, Number(item.volume ?? 1)));
+    const itemSpeed = Math.max(0.5, Math.min(2, Number(item.speed || 1)));
+    const directArgs = [
+      "--no-video",
+      "--msg-level=all=warn",
+      "--term-playing-msg=",
+      "--osd-level=0",
+      "--force-window=no",
+      `--input-ipc-server=${serverPlayer.ipcPath || path.join(os.tmpdir(), `hymn-console-mpv-${process.pid}.sock`)}`,
+      `--volume=${Math.round(itemVolume * 100)}`,
+      `--speed=${itemSpeed}`,
+      ...mpvAudioOutputArgs(),
+      item.filePath
+    ];
+    serverPlayer.ipcPath = directArgs.find((arg) => arg.startsWith("--input-ipc-server=")).split("=")[1];
+    try {
+      fs.rmSync(serverPlayer.ipcPath, { force: true });
+    } catch {}
+    startServerProcess(player, directArgs);
+    waitForMpvSocket().catch(() => {});
+    return;
+  }
   const ffmpeg = process.env.HYMN_FFMPEG || "ffmpeg";
   const trimFilters = serverPlayer.queue.map((segment, index) => {
     const start = Math.max(0, Number(segment.start || 0));
@@ -1994,6 +2018,24 @@ function serverPlayerElapsed() {
   return serverPlayer.elapsedBefore;
 }
 
+async function probeAudioDuration(filePath) {
+  const ffprobe = process.env.HYMN_FFPROBE || "ffprobe";
+  if (!await commandExists(ffprobe)) return 0;
+  try {
+    const result = await runCommand(ffprobe, [
+      "-v", "error",
+      "-show_entries", "format=duration",
+      "-of", "default=noprint_wrappers=1:nokey=1",
+      filePath
+    ]);
+    const duration = Number.parseFloat(result.stdout.trim());
+    return Number.isFinite(duration) && duration > 0 ? duration : 0;
+  } catch (error) {
+    addLog("error", `Could not read MP3 duration: ${error.message}`);
+    return 0;
+  }
+}
+
 async function buildServerAudioQueue(payload) {
   const fileName = path.basename(payload.fileName || "");
   if (!fileName.toLowerCase().endsWith(".mp3")) throw new Error("Invalid MP3 file.");
@@ -2007,7 +2049,10 @@ async function buildServerAudioQueue(payload) {
     fadeIn: payload.fadeIn,
     fadeOut: payload.fadeOut
   };
-  if (!segments.length) return [{ ...common, start: 0, duration: Number(payload.duration || 0) }];
+  if (!segments.length) {
+    const duration = Number(payload.duration || 0) || await probeAudioDuration(filePath);
+    return [{ ...common, start: 0, duration }];
+  }
   const queue = segments
     .map((segment) => ({
       ...common,
@@ -2015,6 +2060,10 @@ async function buildServerAudioQueue(payload) {
       duration: Math.max(0, Number(segment.end) - Number(segment.start))
     }))
     .filter((segment) => segment.duration > 0);
+  if (!queue.length) {
+    const duration = Number(payload.duration || 0) || await probeAudioDuration(filePath);
+    return [{ ...common, start: 0, duration }];
+  }
   return queue;
 }
 
