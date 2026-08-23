@@ -968,7 +968,6 @@ function applyPermissionUi() {
   show("networkPermissionGroup", hasPermission("settings.network"));
   show("restartAppBtn", hasPermission("system.restartApp"));
   show("restartPiBtn", hasPermission("system.restartPi"));
-  show("rustDeskStatus", hasPermission("remote.support"));
   show("resetLogBtn", hasPermission("logs.reset"));
   if (!isSettingsUnlocked()) {
     show("downloadDiagnosticsBtn", false);
@@ -1003,7 +1002,7 @@ function updateSettingsLockState() {
   const sectionPermissions = {
     "Playback Defaults": ["settings.playback", "queue.alerts"],
     "Library Management": ["library.uploadMp3", "library.importCsv", "library.exportCsv", "trash.restore", "trash.empty", "lookup.settings", "openai.clear", "backups.settings", "backups.download", "backups.run", "backups.restore"],
-    "Network & System": ["settings.network", "system.restartApp", "system.restartPi", "remote.support"],
+    "Network & System": ["settings.network", "system.restartApp", "system.restartPi"],
     "Appearance": ["settings.appearance"],
     "System Log": ["logs.reset"]
   };
@@ -1014,7 +1013,6 @@ function updateSettingsLockState() {
     section.hidden = section.dataset.permissionHidden === "true";
   });
   if (canManageAccounts()) loadAccounts().catch((error) => setStatus(error.message));
-  loadRustDeskStatus().catch(() => {});
 }
 
 async function adminApi(path, options = {}) {
@@ -1134,7 +1132,6 @@ function applyAppSettings(settings) {
 
 async function loadSettings() {
   applyAppSettings(await api("/api/settings"));
-  loadRustDeskStatus().catch(() => {});
 }
 
 async function saveSettingsPatch(patch) {
@@ -2408,35 +2405,6 @@ async function loadResourceStats() {
   ]);
 }
 
-async function loadRustDeskStatus() {
-  const card = $("rustDeskStatus");
-  if (!card) return;
-  if (!hasPermission("remote.support")) {
-    card.hidden = true;
-    return;
-  }
-  card.hidden = false;
-  try {
-    const data = await permissionApi("remote.support", "/api/rustdesk");
-    card.innerHTML = `
-      <h4>RustDesk Remote Access</h4>
-      <div class="remote-access-grid">
-        <div><span>Status</span><strong></strong></div>
-        <div><span>ID</span><strong></strong></div>
-        <div><span>Password</span><strong></strong></div>
-      </div>
-      <p class="muted"></p>
-    `;
-    const values = card.querySelectorAll(".remote-access-grid strong");
-    values[0].textContent = data.service || (data.installed ? "Installed" : "Not installed");
-    values[1].textContent = data.id || "Waiting for RustDesk";
-    values[2].textContent = data.password || "Not configured";
-    card.querySelector("p").textContent = data.note || "Use these details for remote support.";
-  } catch (error) {
-    card.innerHTML = `<h4>RustDesk Remote Access</h4><p class="muted">${error.message || "RustDesk status unavailable."}</p>`;
-  }
-}
-
 async function loadTrash() {
   const data = await api("/api/trash");
   const trash = Array.isArray(data) ? data : data.items || [];
@@ -3482,15 +3450,13 @@ $("emptyTrashBtn").addEventListener("click", () => emptyTrashCan().catch((error)
 $("refreshNetworkBtn").addEventListener("click", () => {
   loadNetworkAddress().catch((error) => setStatus(error.message));
   loadControllers().catch((error) => setStatus(error.message));
-  loadRustDeskStatus().catch((error) => setStatus(error.message));
 });
 $("downloadDiagnosticsBtn").addEventListener("click", () => downloadDiagnostics().catch((error) => setStatus(error.message)));
 $("systemCheckBtn").addEventListener("click", () => {
   Promise.all([
     loadResourceStats(),
     loadStorageStatus(),
-    runStartupCheck(),
-    loadRustDeskStatus()
+    runStartupCheck()
   ]).then(() => setStatus("System check refreshed")).catch((error) => setStatus(error.message));
 });
 $("restartAppBtn").addEventListener("click", () => {

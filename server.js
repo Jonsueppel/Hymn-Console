@@ -20,7 +20,6 @@ const PLANS_FILE = path.join(DATA_DIR, "service-plans.json");
 const QUEUE_FILE = path.join(DATA_DIR, "service-queue.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
 const CUSTOM_LOGO_FILE = path.join(DATA_DIR, "custom-logo");
-const RUSTDESK_ACCESS_FILE = path.join(DATA_DIR, "rustdesk-access.json");
 const DATABASE_FILE = path.join(DATA_DIR, "hymn-console.sqlite");
 const BACKUP_TOKEN = process.env.HYMN_BACKUP_TOKEN || "";
 const USER_PERMISSION_CATALOG = Object.freeze({
@@ -59,7 +58,6 @@ const USER_PERMISSION_CATALOG = Object.freeze({
   "logs.reset": { group: "Application Settings", name: "Reset System Log", description: "Clear the live Hymn Console system activity log." },
   "system.restartApp": { group: "Application Settings", name: "Restart App", description: "Restart the Hymn Console service without rebooting the Raspberry Pi." },
   "system.restartPi": { group: "Application Settings", name: "Restart Raspberry Pi", description: "Reboot the entire Raspberry Pi after a typed confirmation." },
-  "remote.support": { group: "Application Settings", name: "View Remote Support Details", description: "View the RustDesk ID and unattended support password." },
 
   "accounts.create": { group: "User Administration", name: "Create Users", description: "Create new Hymn Console user accounts." },
   "accounts.delete": { group: "User Administration", name: "Delete Users", description: "Delete user accounts other than the protected built-in administrator." },
@@ -384,20 +382,19 @@ function guideSections(kind) {
         ]],
         ["Prepare Raspberry Pi OS", [
           "Install Raspberry Pi OS Lite or Desktop, enable SSH if remote administration is needed, connect to the church network, and run system updates before installing the app.",
-          "The included installer installs Node.js, ffmpeg, mpv, rsync, curl, ALSA utilities, Avahi, shairport-sync, and optional RustDesk support. These packages support the web app, Sound System playback, fades, Raspberry Pi volume control, friendly local network names, AirPlay receiving from Apple devices, and remote support."
+          "The included installer installs Node.js, ffmpeg, mpv, rsync, curl, ALSA utilities, Avahi, and shairport-sync. These packages support the web app, Sound System playback, fades, Raspberry Pi volume control, friendly local network names, and AirPlay receiving from Apple devices."
         ]],
         ["How The System Connects", [
           "Phones, tablets, and laptops connect by browser to http://hymnconsole.local:8080 or the Raspberry Pi IP address. The devices are controllers; the Raspberry Pi is the server.",
           "Connection diagram:",
           "Phone / Tablet / Laptop browser -> Church Wi-Fi or Ethernet -> Raspberry Pi running Hymn Console -> MP3 storage on SD card or USB drive.",
           "For Sound System playback: Raspberry Pi -> USB audio, headphone jack, or HDMI audio -> mixer, amplifier, or powered speakers.",
-          "For AirPlay playback: iPhone or iPad -> Wi-Fi AirPlay stream -> Shairport Sync on Raspberry Pi -> the same Raspberry Pi audio output -> sound system.",
-          "For remote support: support computer -> RustDesk relay/direct connection -> RustDesk service on Raspberry Pi -> administrator-approved maintenance."
+          "For AirPlay playback: iPhone or iPad -> Wi-Fi AirPlay stream -> Shairport Sync on Raspberry Pi -> the same Raspberry Pi audio output -> sound system."
         ]],
         ["Install Hymn Console", [
           "Clone the GitHub repository or copy the deployment package onto the Raspberry Pi. From inside the app folder, run sudo RUN_USER=pi bash deployment/install-rpi.sh unless your Pi uses a different service user.",
           "The installer copies the app to /opt/hymn-console, creates the hymn-console systemd service, enables startup on boot, creates data/media/trash/backup folders, sets permissions, and preserves existing data and media folders during updates.",
-          "The installer also configures a health-check timer, nightly midnight local backups, log rotation, firewall access for the app and AirPlay, a default hostname of hymnconsole, AirPlay, and optional RustDesk remote access.",
+          "The installer also configures a health-check timer, nightly midnight local backups, log rotation, firewall access for the app and AirPlay, a default hostname of hymnconsole, and AirPlay.",
           "After install, open http://hymnconsole.local:8080 or http://the-pi-ip-address:8080 from a device on the same network."
         ]],
         ["Storage Choices", [
@@ -425,17 +422,11 @@ function guideSections(kind) {
         ["Backup And Recovery", [
           "Use Download Complete Backup before major changes. Keep a backup on a different computer, USB drive, or trusted network share.",
           "Deleted MP3s move to the trash can first. Empty the trash only after verifying the files are no longer needed.",
-          "A systemd backup timer saves a local backup every night at midnight. Complete backups include the SQLite database, MP3 files, service plans, queue, settings, themes, custom logo, and RustDesk access file."
-        ]],
-        ["Remote Access", [
-          "The installer attempts to install RustDesk and set an unattended password for support.",
-          "Sign in as an administrator, open Settings, expand Network & System, and read the RustDesk ID and password from the RustDesk Remote Access card.",
-          "If RustDesk is not installed because the Pi was offline or no package was available for the architecture, rerun the installer later or install RustDesk manually.",
-          "If the password shows as not configured, set it on the Pi with sudo rustdesk --password, then update /opt/hymn-console/data/rustdesk-access.json."
+          "A systemd backup timer saves a local backup every night at midnight. Complete backups include the SQLite database, MP3 files, service plans, queue, settings, themes, and custom logo."
         ]],
         ["Maintenance Checklist", [
           "Before Sunday: confirm network access, refresh System Check, confirm the selected hymn storage location and audio output, load the service plan, and select the first hymn.",
-          "Monthly: download a backup, check free storage, review the trash can, update Raspberry Pi OS, test Sound System playback, test AirPlay, and verify RustDesk remote access if support is needed."
+          "Monthly: download a backup, check free storage, review the trash can, update Raspberry Pi OS, test Sound System playback, and test AirPlay."
         ]]
       ]
     };
@@ -468,10 +459,6 @@ function guideSections(kind) {
         "On iPhone, open Control Center, tap the audio output icon, and select Hymn Console AirPlay or your custom app name followed by AirPlay. Audio from the iPhone will play through the Raspberry Pi sound output.",
         "AirPlay is useful for occasional wireless audio from an Apple device. For the normal service queue, Sound System mode is still the most direct and reliable playback path.",
         "If AirPlay connects but no sound is heard, reboot the Pi and confirm the Pi audio output works before service."
-      ]],
-      ["RustDesk Remote Support", [
-        "If RustDesk was installed by the Raspberry Pi installer, sign in as an administrator, open Settings, expand Network & System, and use the RustDesk ID and password shown there for remote support.",
-        "Keep the RustDesk password private. Change it by rerunning the installer or changing the RustDesk unattended access password on the Raspberry Pi."
       ]],
       ["Library", [
         "Use search, hymn theme search, and the alphabet bar to find hymns quickly. Signed-in operators can add hymns to the service queue.",
@@ -973,43 +960,6 @@ async function getResourceStats() {
   };
 }
 
-async function getRustDeskStatus() {
-  const installed = process.platform === "linux" ? await commandExists("rustdesk") : false;
-  let service = "Unavailable";
-  let id = "";
-  let password = "";
-  let note = "";
-  if (installed) {
-    try {
-      const result = await runCommand("rustdesk", ["--get-id"]);
-      id = result.stdout.trim().split(/\r?\n/).filter(Boolean).pop() || "";
-    } catch (error) {
-      note = `RustDesk ID unavailable: ${error.message}`;
-    }
-    try {
-      await runCommand("systemctl", ["is-active", "--quiet", "rustdesk"]);
-      service = "Running";
-    } catch {
-      service = "Installed";
-    }
-  }
-  try {
-    const access = await readJson(RUSTDESK_ACCESS_FILE, {});
-    password = String(access.password || "");
-    if (!id) id = String(access.id || "");
-    if (!note) note = String(access.note || "");
-  } catch {
-    // Optional installer-created file.
-  }
-  return {
-    installed,
-    service,
-    id,
-    password,
-    note: note || (installed ? "Use this ID and password for remote support." : "RustDesk is not installed on this device.")
-  };
-}
-
 async function listTrash() {
   try {
     const mediaDir = await ensureMediaStorage();
@@ -1043,8 +993,7 @@ async function createBackupFile() {
     await fsp.copyFile(path.join(mediaDir, entry.name), path.join(snapshotPath, "media", entry.name));
   }
   for (const [source, target] of [
-    [CUSTOM_LOGO_FILE, "custom-logo"],
-    [RUSTDESK_ACCESS_FILE, "rustdesk-access.json"]
+    [CUSTOM_LOGO_FILE, "custom-logo"]
   ]) {
     try {
       await fsp.copyFile(source, path.join(snapshotPath, target));
@@ -2410,19 +2359,13 @@ async function handleApi(req, res, url) {
       tools: {
         mpv: await commandExists("mpv"),
         ffmpeg: await commandExists("ffmpeg"),
-        tar: await commandExists("tar"),
-        rustdesk: await commandExists("rustdesk")
+        tar: await commandExists("tar")
       },
       recentLogs: eventLog.slice(0, 100)
     };
     return send(res, 200, report, {
       "content-disposition": `attachment; filename="hymn-console-diagnostics-${new Date().toISOString().slice(0, 10)}.json"`
     });
-  }
-
-  if (req.method === "GET" && url.pathname === "/api/rustdesk") {
-    auth.requirePermission(storage, req, "remote.support");
-    return send(res, 200, await getRustDeskStatus());
   }
 
   if (req.method === "GET" && url.pathname === "/api/controllers") {
@@ -2635,10 +2578,8 @@ async function handleApi(req, res, url) {
     const hasNetwork = Object.values(os.networkInterfaces()).flat().some((item) => item && item.family === "IPv4" && !item.internal);
     const hasMpv = process.platform === "win32" || Boolean(process.env.HYMN_AUDIO_PLAYER) || await commandExists("mpv");
     const hasFfmpeg = process.platform === "win32" || await commandExists("ffmpeg");
-    const hasRustDesk = process.platform === "linux" && await commandExists("rustdesk");
     addCheck("Network", hasNetwork, "LAN address check");
     addCheck("Sound system player", hasMpv && hasFfmpeg, hasMpv && hasFfmpeg ? "mpv and ffmpeg available" : "Install mpv and ffmpeg for Sound System playback");
-    addCheck("RustDesk remote access", process.platform !== "linux" || hasRustDesk, process.platform === "linux" ? (hasRustDesk ? "RustDesk installed" : "RustDesk not installed") : "Only checked on Raspberry Pi/Linux");
     return send(res, 200, checks);
   }
 
@@ -2881,8 +2822,7 @@ async function handleApi(req, res, url) {
         storage.replaceDatabase(backupDatabase);
         storage.clearAllSessions();
         for (const [sourceName, destination] of [
-          ["custom-logo", CUSTOM_LOGO_FILE],
-          ["rustdesk-access.json", RUSTDESK_ACCESS_FILE]
+          ["custom-logo", CUSTOM_LOGO_FILE]
         ]) {
           try {
             await fsp.copyFile(path.join(extractDir, sourceName), destination);

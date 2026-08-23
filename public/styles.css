@@ -5869,46 +5869,6 @@ body[data-active-tab="settings"] .settings-body {
   border-top: 1px solid color-mix(in srgb, var(--app-line) 58%, transparent);
 }
 
-body[data-active-tab="settings"] .remote-access-card {
-  margin-top: 12px;
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--app-accent) 28%, var(--app-line));
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--app-panel-soft) 82%, var(--app-panel));
-}
-
-body[data-active-tab="settings"] .remote-access-card h4 {
-  margin: 0 0 10px;
-}
-
-body[data-active-tab="settings"] .remote-access-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-body[data-active-tab="settings"] .remote-access-grid div {
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid color-mix(in srgb, var(--app-line) 72%, transparent);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--app-panel) 88%, transparent);
-}
-
-body[data-active-tab="settings"] .remote-access-grid span {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--app-muted);
-  font-size: 0.76rem;
-}
-
-body[data-active-tab="settings"] .remote-access-grid strong {
-  display: block;
-  overflow-wrap: anywhere;
-  color: var(--app-ink);
-}
-
 body[data-active-tab="settings"] .settings-body.collapsed {
   display: none;
 }
@@ -5964,9 +5924,6 @@ body[data-active-tab="settings"] .settings-section > :not(h3):not(.section-title
     padding: 0 10px;
   }
 
-  body[data-active-tab="settings"] .remote-access-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* Phone and tablet service polish */

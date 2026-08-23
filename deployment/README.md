@@ -46,7 +46,6 @@ The shorter `http://hymnconsole:8080` address requires local DNS support from th
 - A reserved DHCP address in the church router.
 - `ffmpeg` and `mpv` for Sound System playback and smooth live fade control.
 - `shairport-sync` for AirPlay receiving from iPhone, iPad, and macOS devices.
-- RustDesk for remote support when the Pi can reach the internet during installation.
 
 ## How It All Connects
 
@@ -63,7 +62,6 @@ Raspberry Pi running Hymn Console
   - SQLite data, service plans, users, settings
   - MP3 storage on SD card or USB drive
   - Shairport Sync AirPlay receiver
-  - RustDesk remote support
               |
               v
 Audio output from Raspberry Pi
@@ -78,7 +76,6 @@ Playback paths:
 - `This Device`: audio plays from the phone, tablet, or laptop browser.
 - `Sound System`: Hymn Console tells the Raspberry Pi to play the selected hymn through the connected sound system.
 - `AirPlay`: an iPhone, iPad, or Mac streams audio wirelessly to `Hymn Console AirPlay`, then the Pi sends it to the same sound output.
-- `Remote Support`: RustDesk lets an administrator or support person connect to the Pi for maintenance.
 
 ## Service Commands
 
@@ -98,7 +95,7 @@ The installer enables:
 - `hymn-console-backup.timer` to save a local backup every night at midnight.
 - Log rotation for `/opt/hymn-console/logs/*.log`.
 - A small journald size cap so logs do not fill the SD card.
-- Firewall rules for SSH, the app port, mDNS, AirPlay, and RustDesk helper ports when `ufw` is available.
+- Firewall rules for SSH, the app port, mDNS, and AirPlay when `ufw` is available.
 
 ## AirPlay Receiver
 
@@ -164,17 +161,6 @@ Find a USB UUID with:
 lsblk -f
 ```
 
-## RustDesk Remote Access
-
-The installer attempts to install RustDesk from the latest official GitHub release for the Raspberry Pi architecture. If RustDesk installs successfully, the installer:
-
-- Enables the RustDesk service.
-- Creates an unattended access password.
-- Saves the ID/password details in `/opt/hymn-console/data/rustdesk-access.json`.
-- Displays the details in Settings > Network & System for signed-in administrators.
-
-If RustDesk cannot be installed because the Pi is offline or no compatible package is found, the installer continues and the Settings card will show RustDesk as unavailable.
-
 ## Admin And Service Modes
 
 - First-time setup creates one protected built-in administrator account.
@@ -204,7 +190,6 @@ Then open the app, go to Settings, expand Network & System, and run the combined
 - Storage location and free space look correct.
 - Sound System player reports `mpv and ffmpeg available`.
 - AirPlay speaker `Hymn Console AirPlay` or the custom app name followed by `AirPlay` appears on an iPhone on the same network.
-- RustDesk shows an ID and unattended password if remote support is needed.
 
 Run the installed self-test:
 
@@ -238,7 +223,7 @@ sudo hymn-console-rollback
 
 ## Complete Backups
 
-Nightly backups include SQLite data, MP3 files, custom branding, and RustDesk configuration. Set an off-device target in Settings > Library Management. The target should be a mounted USB drive or trusted network share. Restoring a complete backup signs out all existing sessions.
+Nightly backups include SQLite data, MP3 files, and custom branding. Set an off-device target in Settings > Library Management. The target should be a mounted USB drive or trusted network share. Restoring a complete backup signs out all existing sessions.
 - The access URL is the one volunteers will use.
 - Confirm the selected hymn plays through the intended output.
 

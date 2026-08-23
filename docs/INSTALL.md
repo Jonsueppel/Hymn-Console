@@ -80,7 +80,6 @@ Raspberry Pi running Hymn Console
   - SQLite data, users, plans, settings
   - MP3 storage on SD card or USB drive
   - Shairport Sync AirPlay receiver
-  - Optional RustDesk remote support
               |
               v
 Raspberry Pi audio output
@@ -160,4 +159,4 @@ curl http://localhost:8080/api/health
 
 Use Download Complete Backup before major changes. Configure an off-device backup path for a mounted USB drive or trusted network share.
 
-Complete backups include data, plans, settings, themes, custom logo, RustDesk access file, and MP3 files.
+Complete backups include data, plans, settings, themes, custom logo, and MP3 files.

@@ -257,7 +257,6 @@ test("production API integration", async (t) => {
       ["/api/system/restart-pi", { method: "POST", json: {} }],
       ["/api/custom-logo", { method: "POST", body: new FormData() }],
       ["/api/custom-logo", { method: "DELETE" }],
-      ["/api/rustdesk", {}],
       ["/api/upload", { method: "POST", body: new FormData() }],
       ["/api/hymns/not-a-hymn", { method: "DELETE" }],
       ["/api/trash/restore", { method: "POST", json: { name: "nothing.mp3" } }],

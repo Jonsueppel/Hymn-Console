@@ -98,7 +98,6 @@ Common administrator settings:
 - Appearance
 - System log
 - Backup tools
-- RustDesk remote support
 
 ## Before Worship Checklist
 

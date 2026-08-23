@@ -6,14 +6,14 @@ All notable Hymn Console changes should be recorded here.
 
 - Added source-available public repository documentation.
 - Updated Help, User Guide, Installation Guide, and deployment documentation.
-- Added installation connection diagram covering controllers, Raspberry Pi, storage, AirPlay, RustDesk, and sound system.
-- Improved Raspberry Pi installer notes for AirPlay, firewall rules, RustDesk, backups, and update workflow.
+- Added installation connection diagram covering controllers, Raspberry Pi, storage, AirPlay, and sound system.
+- Removed third-party remote-access integration from the app and Raspberry Pi installer.
+- Improved Raspberry Pi installer notes for AirPlay, firewall rules, backups, and update workflow.
 
 ## 2.1.0 - 2026-07-25
 
 - Added Raspberry Pi deployment improvements.
 - Added AirPlay receiver support with Shairport Sync.
-- Added RustDesk remote support status display for administrators.
 - Improved Raspberry Pi firewall and audio-output guidance.
 - Added system health, resource stats, diagnostics, restart tools, and backup automation.
 

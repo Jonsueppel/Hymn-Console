@@ -16,6 +16,5 @@ Before committing screenshots, make sure they do not show:
 - Passwords
 - Recovery codes
 - OpenAI keys
-- RustDesk passwords
 - Private IP addresses if you do not want them public
 - Licensed hymn lyrics or copyrighted MP3 information you do not have permission to publish

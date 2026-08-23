@@ -9,7 +9,6 @@ Hymn Console is intended to run on a Raspberry Pi or trusted local server inside
 Never commit:
 
 - OpenAI API keys
-- RustDesk passwords
 - Administrator recovery codes
 - `.env` files
 - SQLite databases
@@ -26,7 +25,6 @@ The `.gitignore` file is configured to keep common runtime data out of Git, but 
 - Keep the Pi behind the church router/firewall.
 - Use strong administrator and operator passwords.
 - Grant users only the permissions they need.
-- Change RustDesk unattended passwords after sharing support access.
 - Download complete backups and store copies off the Pi.
 - Run the validation checklist before relying on a release during worship.
 

@@ -15,7 +15,6 @@ USB_MOUNT="${USB_MOUNT:-/mnt/hymns}"
 USB_UUID="${USB_UUID:-}"
 TRUSTED_SUBNET="${TRUSTED_SUBNET:-}"
 ALLOW_UNRESTRICTED_WEB="${ALLOW_UNRESTRICTED_WEB:-0}"
-RUSTDESK_PASSWORD_FILE="${APP_DIR}/data/rustdesk-access.json"
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "Run this installer with sudo."
@@ -49,56 +48,6 @@ install_nodejs() {
   apt-get install -y nodejs
 }
 
-install_rustdesk() {
-  if have_command rustdesk; then
-    echo "RustDesk already installed."
-    return
-  fi
-  echo "Installing RustDesk for remote access..."
-  local arch asset_url tmp_deb
-  arch="$(dpkg --print-architecture)"
-  case "${arch}" in
-    arm64) asset_url="$(curl -fsSL https://api.github.com/repos/rustdesk/rustdesk/releases/latest | grep browser_download_url | grep -E 'aarch64.*\.deb' | head -n1 | cut -d '"' -f4)" ;;
-    armhf|armv7l) asset_url="$(curl -fsSL https://api.github.com/repos/rustdesk/rustdesk/releases/latest | grep browser_download_url | grep -E 'armv7.*\.deb|armhf.*\.deb' | head -n1 | cut -d '"' -f4)" ;;
-    amd64) asset_url="$(curl -fsSL https://api.github.com/repos/rustdesk/rustdesk/releases/latest | grep browser_download_url | grep -E 'x86_64.*\.deb|amd64.*\.deb' | head -n1 | cut -d '"' -f4)" ;;
-    *) asset_url="" ;;
-  esac
-  if [[ -z "${asset_url}" ]]; then
-    echo "RustDesk package not found for architecture ${arch}; skipping RustDesk install."
-    return
-  fi
-  tmp_deb="/tmp/rustdesk-${arch}.deb"
-  curl -fL "${asset_url}" -o "${tmp_deb}"
-  apt-get install -y "${tmp_deb}" || apt-get -f install -y
-  rm -f "${tmp_deb}"
-}
-
-configure_rustdesk() {
-  if ! have_command rustdesk; then
-    return
-  fi
-  systemctl enable rustdesk >/dev/null 2>&1 || true
-  systemctl restart rustdesk >/dev/null 2>&1 || true
-  local password id
-  if [[ -f "${RUSTDESK_PASSWORD_FILE}" ]]; then
-    password="$(jq -r '.password // empty' "${RUSTDESK_PASSWORD_FILE}" 2>/dev/null || true)"
-  fi
-  if [[ -z "${password:-}" ]]; then
-    password="$(openssl rand -base64 18 | tr -d '=+/[:space:]' | cut -c1-12)"
-  fi
-  rustdesk --password "${password}" >/dev/null 2>&1 || true
-  id="$(rustdesk --get-id 2>/dev/null | tr -d '\r' | tail -n1 || true)"
-  cat > "${RUSTDESK_PASSWORD_FILE}" <<RUSTDESK
-{
-  "id": "${id}",
-  "password": "${password}",
-  "note": "RustDesk ID may take a minute to appear after first boot."
-}
-RUSTDESK
-  chown "${RUN_USER}:${RUN_USER}" "${RUSTDESK_PASSWORD_FILE}" || true
-  chmod 600 "${RUSTDESK_PASSWORD_FILE}" || true
-}
-
 echo "Installing Hymn Console to ${APP_DIR}"
 apt-get update
 install_nodejs
@@ -107,7 +56,6 @@ apt-get install -y \
 for optional_package in pulseaudio-utils pipewire pipewire-audio-client-libraries wireplumber avahi-daemon libnss-mdns ufw jq; do
   apt-get install -y "${optional_package}" || echo "Optional package ${optional_package} could not be installed; continuing."
 done
-install_rustdesk || true
 
 mkdir -p "${APP_DIR}" "${APP_DIR}/data" "${APP_DIR}/media" "${APP_DIR}/media/.trash" "${APP_DIR}/data/backups" "${APP_DIR}/logs" "${USB_MOUNT}" "${RELEASE_ROOT}"
 systemctl stop "${APP_NAME}.service" >/dev/null 2>&1 || true
@@ -414,8 +362,6 @@ if have_command amixer; then
   amixer sset Master 90% unmute >/dev/null 2>&1 || true
 fi
 
-configure_rustdesk || true
-
 systemctl daemon-reload
 systemctl enable "${APP_NAME}"
 systemctl enable "${APP_NAME}-healthcheck.timer"
@@ -437,6 +383,3 @@ fi
 echo "Hymn Console installed."
 echo "Open http://$(hostname -I | awk '{print $1}'):${PORT} or http://${HOSTNAME_NAME}.local:${PORT} from a device on this network."
 echo "AirPlay receiver enabled as \"${AIRPLAY_NAME}\"."
-if [[ -f "${RUSTDESK_PASSWORD_FILE}" ]]; then
-  echo "RustDesk access saved for display in Settings > Network & System."
-fi

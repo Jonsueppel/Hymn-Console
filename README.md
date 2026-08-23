@@ -16,7 +16,6 @@ The goal is simple: upload hymns, organize a service, press play, and keep worsh
 - Lyrics viewer, editable hymn metadata, audio defaults, fades, and Smart Build timing.
 - Administrator and operator accounts with granular permissions.
 - SQLite storage, streamed uploads, trash recovery, complete backups, diagnostics, and self-test tools.
-- Optional RustDesk remote support details shown to administrators.
 
 ## How It Works
 
@@ -33,7 +32,6 @@ Raspberry Pi running Hymn Console
   - SQLite data, users, plans, settings
   - MP3 storage on SD card or USB drive
   - Shairport Sync AirPlay receiver
-  - Optional RustDesk remote support
               |
               v
 Raspberry Pi audio output
@@ -133,7 +131,6 @@ Never commit:
 - SQLite databases
 - Backups
 - OpenAI API keys
-- RustDesk passwords
 - Recovery codes
 - `.env` files
 - Private certificates or keys
