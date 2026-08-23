@@ -639,6 +639,54 @@ async function getMediaDir(settings = null) {
   return appSettings.storage?.mode === "usb" && usbPath ? path.resolve(usbPath) : INTERNAL_MEDIA_DIR;
 }
 
+async function isReadableFile(filePath) {
+  try {
+    const stat = await fsp.stat(filePath);
+    return stat.isFile();
+  } catch {
+    return false;
+  }
+}
+
+async function findFileByName(baseDir, fileName, maxDepth = 5) {
+  if (!baseDir || maxDepth < 0) return "";
+  let entries;
+  try {
+    entries = await fsp.readdir(baseDir, { withFileTypes: true });
+  } catch {
+    return "";
+  }
+  for (const entry of entries) {
+    const candidate = path.join(baseDir, entry.name);
+    if (entry.isFile() && entry.name === fileName) return candidate;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name === ".trash" || entry.name.startsWith(".")) continue;
+    const found = await findFileByName(path.join(baseDir, entry.name), fileName, maxDepth - 1);
+    if (found) return found;
+  }
+  return "";
+}
+
+async function resolveMediaFile(fileName) {
+  const settings = await readSettings();
+  const activeDir = await ensureMediaStorage(settings);
+  const candidates = [safeJoin(activeDir, fileName)];
+  if (activeDir !== INTERNAL_MEDIA_DIR) candidates.push(safeJoin(INTERNAL_MEDIA_DIR, fileName));
+  const usbPath = String(settings.storage?.usbPath || "").trim();
+  if (usbPath && path.resolve(usbPath) !== activeDir) candidates.push(safeJoin(path.resolve(usbPath), fileName));
+  for (const candidate of [...new Set(candidates)]) {
+    if (await isReadableFile(candidate)) return { filePath: candidate, mediaDir: path.dirname(candidate), recovered: candidate !== candidates[0] };
+  }
+  if (process.platform === "linux") {
+    for (const baseDir of ["/media", "/mnt"]) {
+      const found = await findFileByName(baseDir, fileName);
+      if (found) return { filePath: found, mediaDir: path.dirname(found), recovered: true };
+    }
+  }
+  throw new Error(`MP3 file is missing from storage: ${fileName}. Check Settings > Network & System storage location, or upload/copy the MP3 to the selected storage.`);
+}
+
 function getTrashDir(mediaDir) {
   return path.join(mediaDir, ".trash");
 }
@@ -2039,8 +2087,9 @@ async function probeAudioDuration(filePath) {
 async function buildServerAudioQueue(payload) {
   const fileName = path.basename(payload.fileName || "");
   if (!fileName.toLowerCase().endsWith(".mp3")) throw new Error("Invalid MP3 file.");
-  const mediaDir = await ensureMediaStorage();
-  const filePath = safeJoin(mediaDir, fileName);
+  const resolved = await resolveMediaFile(fileName);
+  const filePath = resolved.filePath;
+  if (resolved.recovered) addLog("audio", `Recovered Sound System MP3 path: ${filePath}`);
   const segments = Array.isArray(payload.segments) ? payload.segments : [];
   const common = {
     filePath,
