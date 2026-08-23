@@ -670,7 +670,7 @@ async function findFileByName(baseDir, fileName, maxDepth = 5) {
 
 async function resolveMediaFile(fileName) {
   const settings = await readSettings();
-  const activeDir = await ensureMediaStorage(settings);
+  const activeDir = await getMediaDir(settings);
   const candidates = [safeJoin(activeDir, fileName)];
   if (activeDir !== INTERNAL_MEDIA_DIR) candidates.push(safeJoin(INTERNAL_MEDIA_DIR, fileName));
   const usbPath = String(settings.storage?.usbPath || "").trim();
