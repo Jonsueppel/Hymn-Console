@@ -1,110 +1,167 @@
 # Hymn Console
 
-A Raspberry Pi friendly web app for running church hymns without a pianist. It stores MP3s locally, keeps application data in SQLite, and gives a polished hymn-player screen for mobile phones, tablets, and laptops.
+Hymn Console is a Raspberry Pi powered hymn playback system for churches that need reliable service music without a pianist. It stores MP3 hymns locally, lets volunteers build a service queue from phones, tablets, and laptops, and plays audio through either the current browser device or the Raspberry Pi connected to the church sound system.
 
-## Run
+The goal is simple: upload hymns, organize a service, press play, and keep worship moving without a complicated audio workstation.
+
+## Highlights
+
+- Mobile-friendly hymn player for iPhone, iPad, Android, Windows, and macOS browsers.
+- Local MP3 library stored on the Raspberry Pi SD card or a USB drive.
+- Searchable hymn library with alphabet navigation, hymn theme search, CSV import/export, and bulk MP3 upload.
+- Service queue with verse count, Intro, Verses, Chorus options, saved service plans, queue lock, and operator mode.
+- Sound System playback from the Raspberry Pi using `mpv` and `ffmpeg`.
+- This Device playback for phone, tablet, or laptop speakers.
+- AirPlay receiver support through Shairport Sync.
+- Lyrics viewer, editable hymn metadata, audio defaults, fades, and Smart Build timing.
+- Administrator and operator accounts with granular permissions.
+- SQLite storage, streamed uploads, trash recovery, complete backups, diagnostics, and self-test tools.
+- Optional RustDesk remote support details shown to administrators.
+
+## How It Works
+
+```text
+Phone / Tablet / Laptop
+  Browser control at http://hymnconsole.local:8080
+              |
+              v
+Church Wi-Fi / Ethernet network
+              |
+              v
+Raspberry Pi running Hymn Console
+  - Node.js web app on port 8080
+  - SQLite data, users, plans, settings
+  - MP3 storage on SD card or USB drive
+  - Shairport Sync AirPlay receiver
+  - Optional RustDesk remote support
+              |
+              v
+Raspberry Pi audio output
+  USB audio / HDMI / headphone output
+              |
+              v
+Church mixer, amplifier, or powered speakers
+```
+
+## Screenshots
+
+Screenshots can be placed in `docs/screenshots/`.
+
+Recommended captures:
+
+- Service page desktop
+- Service page phone
+- Library page
+- Settings page
+- Login screen
+- Operator mode
+
+## Raspberry Pi Quick Install
+
+On the Raspberry Pi:
+
+```bash
+cd /opt
+sudo git clone https://github.com/Jonsueppel/Hymn-Console.git hymn-console
+sudo chown -R pi:pi /opt/hymn-console
+cd /opt/hymn-console
+npm install --omit=dev
+sudo RUN_USER=pi bash deployment/install-rpi.sh
+```
+
+Open from another device on the same network:
+
+```text
+http://hymnconsole.local:8080/
+```
+
+Or use the Pi IP address:
+
+```text
+http://<raspberry-pi-ip-address>:8080/
+```
+
+More detail: `docs/INSTALL.md` and `deployment/README.md`.
+
+## Updating From GitHub
+
+On the Pi:
+
+```bash
+cd /opt/hymn-console
+git pull
+sudo RUN_USER=pi bash deployment/install-rpi.sh
+sudo systemctl restart hymn-console
+```
+
+Verify:
+
+```bash
+curl http://localhost:8080/api/health
+```
+
+## Local Development
 
 ```powershell
+npm install
+npm run check
+npm test
 node server.js
 ```
 
-Open `http://localhost:8080` on the Pi, or from another device on the same network use:
+Open:
 
 ```text
-http://<raspberry-pi-ip-address>:8080
+http://localhost:8080/
 ```
 
 ## Storage
+
+Default runtime paths:
 
 - MP3 files: `media/`
 - SQLite database: `data/hymn-console.sqlite`
 - Complete backup snapshots: `data/backups/`
 
-On a Raspberry Pi you can point storage to a USB drive:
+These folders are intentionally ignored by Git. Do not commit live church data.
+
+## Security And Privacy
+
+Never commit:
+
+- Church MP3 files
+- SQLite databases
+- Backups
+- OpenAI API keys
+- RustDesk passwords
+- Recovery codes
+- `.env` files
+- Private certificates or keys
+
+Hymn Console is designed for a private church-device network. Do not expose the Raspberry Pi directly to the public internet.
+
+See `SECURITY.md` for reporting and deployment guidance.
+
+## Documentation
+
+- `docs/INSTALL.md` - installation and update instructions.
+- `docs/USER-GUIDE.md` - operator and administrator user guide.
+- `docs/PRODUCTION-VALIDATION.md` - real-device validation checklist.
+- `deployment/README.md` - Raspberry Pi installer details.
+- `CHANGELOG.md` - release history.
+
+## Validation
+
+Before worship use on new hardware:
 
 ```bash
-HYMN_MEDIA_DIR=/media/pi/HYMNS/mp3 HYMN_DATA_DIR=/media/pi/HYMNS/data node server.js
-```
-
-## Features
-
-- Single and bulk upload for MP3 hymns.
-- Edit title, page number, key, tempo, notes, default verse count, chorus setting, and fades.
-- Searchable hymn library with theme search and alphabet navigation.
-- Service queue for ordering multiple hymns.
-- Play, pause, stop, previous, next, repeat, seek, volume, and speed controls.
-- Fade in and fade out controls.
-- Structure builder for intro, verse, and chorus timings with editable segment times.
-- Service plans, service lock, operator mode, a protected built-in administrator, granular user permissions, persistent sessions, trash recovery, complete backups, CSV import/export, and storage selection.
-- AirPlay receiver support on Raspberry Pi so iPhone audio can be sent to the Pi sound output.
-- Works without npm packages, which keeps setup simple and stable on a Raspberry Pi.
-
-## Raspberry Pi Kiosk Startup
-
-On the Raspberry Pi, run:
-
-```bash
-bash scripts/pi-kiosk-install.sh
-```
-
-That installs a user service for the app and an autostart launcher that opens Chromium at `http://localhost:8080` in kiosk mode after login.
-
-## Sound System Playback
-
-The Service page can play audio through either the current browser device or the Raspberry Pi sound system output. Sound System mode uses `mpv` and `ffmpeg` on the Pi for smoother playback and fade control:
-
-```bash
-sudo apt install -y mpv ffmpeg alsa-utils
-```
-
-If you use a different player path, start the app with `HYMN_AUDIO_PLAYER=/path/to/player`.
-
-## AirPlay Receiver
-
-The Raspberry Pi installer installs and enables `shairport-sync`. After installation, iPhone and other Apple devices should see an AirPlay speaker named `Hymn Console`.
-
-On iPhone, open Control Center, tap the audio output icon, and select `Hymn Console`. AirPlay audio plays through the Raspberry Pi sound output.
-
-To use a different AirPlay speaker name during install:
-
-```bash
-sudo AIRPLAY_NAME="Church Sound System" RUN_USER=admin bash deployment/install-rpi.sh
-```
-
-## Deployment
-
-For Raspberry Pi deployment, use the packaged zip from `dist/hymn-console-rpi.zip`, extract it on the Pi, and run:
-
-```bash
-sudo RUN_USER=admin bash deployment/install-rpi.sh
-```
-
-The installer copies the app to `/opt/hymn-console`, installs system packages, creates the systemd service, enables startup on boot, and grants the limited permissions needed for app restart, Raspberry Pi restart, hostname updates, and Sound System volume control.
-
-## Accounts And Sessions
-
-The first browser to open a new installation creates the protected built-in administrator. That administrator can create user accounts and independently grant playback, remote control, playback-setting, browser-audio, sound-system-audio, queue, plan, lyrics, library, backup, appearance, network, restart, log, remote-support, and user-administration permissions. Features without permission are hidden and rejected by the server. Sessions use HttpOnly same-site cookies, survive browser refreshes, and expire after twelve hours. Save the generated administrator recovery code somewhere separate from the Raspberry Pi.
-
-## Complete Backups
-
-Complete backups contain the SQLite database, MP3 files, custom branding, and remote-access configuration. Configure an off-device USB or network path under Settings > Library Management. Nightly backups run at midnight and use the configured retention period.
-
-## Maintenance Commands
-
-```bash
+npm run check
+npm test
 sudo hymn-console-self-test
-sudo hymn-console-update /path/to/hymn-console-rpi.zip
-sudo hymn-console-rollback
 ```
 
-Use a dedicated church-device network where possible. To restrict port 8080 during installation:
+Then complete the checklist in `docs/PRODUCTION-VALIDATION.md`.
 
-```bash
-sudo TRUSTED_SUBNET="192.168.50.0/24" RUN_USER=admin bash deployment/install-rpi.sh
-```
+## License
 
-The installer detects the Pi's active LAN subnet and restricts port 8080 to it by default. Use `ALLOW_UNRESTRICTED_WEB=1` only when you intentionally need access from every routed network.
-
-## Production Validation
-
-Automated tests cover authentication, authorization, SQLite concurrency and crash recovery, queue synchronization, playback commands, fades, plans, streamed uploads, trash, and complete backup restoration. Before using new hardware in worship, complete the real-device checklist in `docs/PRODUCTION-VALIDATION.md`.
+This repository is source-available. All rights are reserved unless a separate written license is provided. See `LICENSE`.

@@ -1,0 +1,20 @@
+Hymn Console Source-Available License
+
+Copyright (c) 2026 Jon Sueppel. All rights reserved.
+
+This repository is made publicly visible for review, deployment, and collaboration around Hymn Console.
+
+You may:
+- View and study the source code.
+- Clone and run the software for personal, church, evaluation, or development use.
+- Modify the software for your own internal use.
+
+You may not, without prior written permission:
+- Sell, sublicense, rent, host, or commercially redistribute the software.
+- Repackage the software as a competing product or service.
+- Remove copyright, license, attribution, or security notices.
+- Use the name Hymn Console or related branding to imply endorsement.
+
+No warranty is provided. The software is provided "as is", without warranty of any kind, including but not limited to warranties of merchantability, fitness for a particular purpose, and noninfringement. Use in live worship or production environments is at your own risk and should follow the validation checklist in the documentation.
+
+For commercial licensing, redistribution permission, or support arrangements, contact the repository owner.

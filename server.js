@@ -2309,6 +2309,7 @@ async function handleApi(req, res, url) {
       ...patch,
       audioDefaults: { ...current.audioDefaults, ...(patch.audioDefaults || {}) },
       network: { ...current.network, ...(patch.network || {}) },
+      storage: { ...current.storage, ...(patch.storage || {}) },
       backup: { ...current.backup, ...(patch.backup || {}) },
       autoLookup: { ...current.autoLookup, ...(patch.autoLookup || {}) },
       openAiApiKey: patch.clearOpenAiApiKey ? "" : (patch.newOpenAiApiKey ? String(patch.newOpenAiApiKey).trim() : current.openAiApiKey)
@@ -2936,7 +2937,8 @@ async function handleApi(req, res, url) {
 
   if (req.method === "POST" && url.pathname === "/api/upload") {
     auth.requirePermission(storage, req, "library.uploadMp3");
-    const mediaDir = await ensureMediaStorage();
+    const settings = await readSettings();
+    const mediaDir = await ensureMediaStorage(settings);
     const multipart = await streamMultipart(req, { tempDir: mediaDir, limitMb: 2048, maxFiles: 200 });
     const fields = multipart.fields;
     const files = multipart.files.filter((file) => file.name === "audio" && file.filename);
@@ -2977,7 +2979,14 @@ async function handleApi(req, res, url) {
     } finally {
       await cleanup();
     }
-    return send(res, 201, { uploaded, count: uploaded.length });
+    return send(res, 201, {
+      uploaded,
+      count: uploaded.length,
+      storage: {
+        mode: settings.storage?.mode || "internal",
+        mediaPath: mediaDir
+      }
+    });
   }
 
   const hymnMatch = /^\/api\/hymns\/([^/]+)$/.exec(url.pathname);

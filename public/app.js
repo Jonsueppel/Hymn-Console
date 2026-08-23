@@ -1147,6 +1147,26 @@ async function saveSettingsPatch(patch) {
   setStatus("Settings saved");
 }
 
+function updateUploadDestination(data) {
+  const destination = $("uploadDestination");
+  if (!destination || !data) return;
+  const mode = data.storageMode === "usb" ? "USB storage" : "internal storage";
+  destination.textContent = data.error
+    ? `Upload destination problem: ${data.error}`
+    : `Uploads will save to ${mode}: ${data.mediaPath}`;
+  destination.classList.toggle("error-text", Boolean(data.error));
+}
+
+function comparableStoragePath(value) {
+  return String(value || "").trim().replace(/[\\/]+$/, "");
+}
+
+async function getUploadStorageStatus() {
+  const data = await api("/api/storage");
+  updateUploadDestination(data);
+  return data;
+}
+
 function setupSettingsAccordions() {
   const panel = document.querySelector(".settings-panel");
   const order = [
@@ -2355,13 +2375,16 @@ function renderStatGrid(id, items) {
 
 async function loadStorageStatus() {
   const data = await api("/api/storage");
+  updateUploadDestination(data);
   renderStatGrid("storageStatus", [
     { label: "Storage Mode", value: data.storageMode === "usb" ? "USB Storage" : "Internal Storage" },
     { label: "Media Path", value: data.mediaPath },
+    { label: "USB Path", value: data.usbPath || "Not set" },
     { label: "Free Space", value: fmtBytes(data.free) },
     { label: "MP3 Count", value: String(data.mp3Count) },
     { label: "Trash Size", value: `${fmtBytes(data.trashSize)} (${data.trashCount})` },
-    { label: "Library Size", value: fmtBytes(data.mediaSize) }
+    { label: "Library Size", value: fmtBytes(data.mediaSize) },
+    { label: "Status", value: data.error || "Ready" }
   ]);
 }
 
@@ -3187,17 +3210,36 @@ $("uploadForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const fileCount = form.elements.audio?.files?.length || 0;
+  if (!hasPermission("library.uploadMp3")) {
+    setStatus("Your account cannot upload MP3 files.", true);
+    return;
+  }
+  const storageStatus = await getUploadStorageStatus();
+  const selectedStorageMode = $("storageModeSelect")?.value || storageStatus.storageMode || "internal";
+  const selectedUsbPath = comparableStoragePath($("usbStoragePath")?.value);
+  const savedUsbPath = comparableStoragePath(storageStatus.usbPath);
+  const hasUnsavedStorage = selectedStorageMode !== storageStatus.storageMode
+    || (selectedStorageMode === "usb" && selectedUsbPath !== savedUsbPath);
+  if (hasUnsavedStorage) {
+    setStatus("Storage changes are not saved. Select Save Network Info before uploading.", true);
+    return;
+  }
+  if (storageStatus.error) {
+    setStatus(storageStatus.error, true);
+    return;
+  }
   setStatus(fileCount > 1 ? `Uploading ${fileCount} MP3 files` : "Uploading");
-  if (!hasPermission("library.uploadMp3")) throw new Error("Your account cannot upload MP3 files.");
   const result = await api("/api/upload", { method: "POST", body: new FormData(form) });
   form.reset();
   await loadHymns();
+  await loadStorageStatus().catch(() => {});
   const uploaded = Array.isArray(result.uploaded) ? result.uploaded : [result];
   const firstUploaded = uploaded[0];
   const hymn = state.hymns.find((item) => item.id === firstUploaded?.id) || firstUploaded;
   state.selectedId = hymn.id;
   renderDetails();
-  setStatus(uploaded.length > 1 ? `${uploaded.length} MP3 files uploaded` : "MP3 uploaded");
+  const uploadedTo = result.storage?.mode === "usb" ? "USB storage" : "internal storage";
+  setStatus(uploaded.length > 1 ? `${uploaded.length} MP3 files uploaded to ${uploadedTo}` : `MP3 uploaded to ${uploadedTo}`);
   if (uploaded.length === 1 && state.appSettings?.autoLookup?.enabled !== false && $("autoLookupUpload").checked) {
     await runLookupForHymn(hymn);
   }
