@@ -687,6 +687,13 @@ async function resolveMediaFile(fileName) {
   throw new Error(`MP3 file is missing from storage: ${fileName}. Check Settings > Network & System storage location, or upload/copy the MP3 to the selected storage.`);
 }
 
+async function resolveMediaRequest(target) {
+  const fileName = path.basename(target || "");
+  if (!fileName || target !== fileName) throw new Error("Invalid media path.");
+  if (!fileName.toLowerCase().endsWith(".mp3")) throw new Error("Invalid media file.");
+  return resolveMediaFile(fileName);
+}
+
 function getTrashDir(mediaDir) {
   return path.join(mediaDir, ".trash");
 }
@@ -3192,8 +3199,8 @@ async function serveFile(req, res, url) {
   let filePath;
   let requested = "";
   if (url.pathname.startsWith("/media/")) {
-    const mediaDir = await ensureMediaStorage();
-    filePath = safeJoin(mediaDir, decodeURIComponent(url.pathname.replace("/media/", "")));
+    const resolved = await resolveMediaRequest(decodeURIComponent(url.pathname.replace("/media/", "")));
+    filePath = resolved.filePath;
   } else {
     requested = url.pathname === "/" ? "index.html" : decodeURIComponent(url.pathname.slice(1));
     filePath = safeJoin(PUBLIC_DIR, requested);
