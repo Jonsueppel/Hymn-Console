@@ -42,7 +42,8 @@ const state = {
   permissionCatalog: {},
   pendingAuthMode: "",
   pendingAuthMessage: "",
-  serverPlatform: ""
+  serverPlatform: "",
+  lastServerPlayerError: ""
 };
 
 const $ = (id) => document.getElementById(id);
@@ -2917,6 +2918,13 @@ function publishLivePlayback(status, force = false) {
 function renderServerTimeline(info) {
   const localBrowserPlaying = state.audioOutput === "device" && audio.src && !audio.paused;
   if (localBrowserPlaying && (!info?.source || info?.status === "stopped")) return;
+  const serverError = String(info?.error || info?.lastOutput || "").trim();
+  if (serverError && serverError !== state.lastServerPlayerError) {
+    state.lastServerPlayerError = serverError;
+    setStatus(`Sound System error: ${serverError}`, true);
+  } else if (!serverError && info?.status === "playing") {
+    state.lastServerPlayerError = "";
+  }
   const duration = Number(info?.duration || arrangementDuration() || 0);
   const elapsed = Math.max(0, Math.min(duration || Number(info?.elapsed || 0), Number(info?.elapsed || 0)));
   const title = String(info?.currentTitle || "").trim();
@@ -3031,7 +3039,8 @@ async function serverAudio(action) {
   renderServerTimeline(result);
   if (["play", "resume"].includes(action)) startServerTimeline();
   if (action === "stop") stopServerTimeline();
-  setStatus(action === "play" ? "Playing on sound system" : `Sound system audio ${result.status}`);
+  const resultError = String(result.error || result.lastOutput || "").trim();
+  setStatus(resultError ? `Sound System error: ${resultError}` : (action === "play" ? "Playing on sound system" : `Sound system audio ${result.status}`), Boolean(resultError));
   return true;
 }
 

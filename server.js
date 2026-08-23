@@ -115,6 +115,7 @@ const serverPlayer = {
   pausedAt: 0,
   ipcPath: "",
   backend: "",
+  lastOutput: "",
   controls: { volume: 0.9, speed: 1, fadeIn: 1.5, fadeOut: 2 }
 };
 const livePlayback = {
@@ -1666,6 +1667,7 @@ function stopServerAudio() {
   serverPlayer.itemStartedAt = 0;
   serverPlayer.pausedAt = 0;
   serverPlayer.backend = "";
+  serverPlayer.lastOutput = "";
   if (serverPlayer.process) {
     serverPlayer.process.removeAllListeners();
     try {
@@ -1694,6 +1696,15 @@ function soundSystemPlayer() {
 
 function isMpvPlayer(player) {
   return path.basename(player).toLowerCase().includes("mpv");
+}
+
+function mpvAudioOutputArgs() {
+  const args = [];
+  const audioOutput = String(process.env.HYMN_MPV_AO || "").trim();
+  const audioDevice = String(process.env.HYMN_MPV_AUDIO_DEVICE || "").trim();
+  if (audioOutput) args.push(`--ao=${audioOutput}`);
+  if (audioDevice) args.push(`--audio-device=${audioDevice}`);
+  return args;
 }
 
 function buildAudioFilters(item, isFirst = true, isLast = true) {
@@ -1756,14 +1767,33 @@ async function waitForMpvSocket() {
 }
 
 function startServerProcess(player, args, helperProcess = null) {
+  let playerOutput = "";
+  let helperOutput = "";
+  const appendOutput = (current, chunk) => {
+    const next = `${current}${chunk.toString()}`;
+    return next.length > 4000 ? next.slice(-4000) : next;
+  };
+  const summarizeOutput = () => {
+    const combined = [playerOutput, helperOutput].map((value) => value.trim()).filter(Boolean).join(" | ");
+    return combined ? combined.replace(/\s+/g, " ").slice(0, 700) : "";
+  };
   serverPlayer.status = "playing";
   serverPlayer.itemStartedAt = Date.now();
   serverPlayer.pausedAt = 0;
   serverPlayer.helperProcess = helperProcess;
   serverPlayer.backend = isMpvPlayer(player) ? "mpv" : "ffplay";
+  serverPlayer.lastOutput = "";
   addLog("audio", `Playing on sound system: ${serverPlayer.currentTitle || "selected hymn"}`);
-  serverPlayer.process = spawn(player, args, { stdio: helperProcess ? ["pipe", "ignore", "ignore"] : "ignore", windowsHide: true });
+  serverPlayer.process = spawn(player, args, { stdio: [helperProcess ? "pipe" : "ignore", "ignore", "pipe"], windowsHide: true });
+  serverPlayer.process.stderr?.on("data", (chunk) => {
+    playerOutput = appendOutput(playerOutput, chunk);
+    serverPlayer.lastOutput = summarizeOutput();
+  });
   if (helperProcess) {
+    helperProcess.stderr?.on("data", (chunk) => {
+      helperOutput = appendOutput(helperOutput, chunk);
+      serverPlayer.lastOutput = summarizeOutput();
+    });
     helperProcess.stdout.pipe(serverPlayer.process.stdin);
     helperProcess.once("error", (error) => {
       serverPlayer.error = `ffmpeg failed: ${error.message}`;
@@ -1776,7 +1806,8 @@ function startServerProcess(player, args, helperProcess = null) {
     addLog("error", serverPlayer.error);
     stopServerAudio();
   });
-  serverPlayer.process.once("exit", () => {
+  serverPlayer.process.once("exit", (code, signal) => {
+    const output = summarizeOutput();
     serverPlayer.process = null;
     if (serverPlayer.helperProcess) {
       serverPlayer.helperProcess.removeAllListeners();
@@ -1786,6 +1817,13 @@ function startServerProcess(player, args, helperProcess = null) {
       serverPlayer.helperProcess = null;
     }
     if (serverPlayer.status === "playing") {
+      if (code && code !== 0) {
+        serverPlayer.error = `${path.basename(player)} exited with code ${code}${output ? `: ${output}` : ""}`;
+        addLog("error", serverPlayer.error);
+      } else if (signal) {
+        serverPlayer.error = `${path.basename(player)} stopped by signal ${signal}${output ? `: ${output}` : ""}`;
+        addLog("error", serverPlayer.error);
+      }
       serverPlayer.elapsedBefore = serverPlayer.totalDuration;
       stopServerAudio();
     }
@@ -1844,7 +1882,7 @@ function startServerAudioConcat() {
     ...(postFilters.length ? [`[joined]${postFilters.join(",")}[out]`] : [])
   ].join(";");
   const ffmpegArgs = ["-loglevel", "quiet", "-i", item.filePath, "-filter_complex", filterGraph, "-map", "[out]", "-f", "wav", "pipe:1"];
-  const ffmpegProcess = spawn(ffmpeg, ffmpegArgs, { stdio: ["ignore", "pipe", "ignore"], windowsHide: true });
+  const ffmpegProcess = spawn(ffmpeg, ffmpegArgs, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
   serverPlayer.ipcPath = path.join(os.tmpdir(), `hymn-console-mpv-${process.pid}.sock`);
   try {
     fs.rmSync(serverPlayer.ipcPath, { force: true });
@@ -1855,6 +1893,7 @@ function startServerAudioConcat() {
     "--force-window=no",
     `--input-ipc-server=${serverPlayer.ipcPath}`,
     "--volume=100",
+    ...mpvAudioOutputArgs(),
     "-"
   ];
   startServerProcess(player, mpvArgs, ffmpegProcess);
@@ -2626,6 +2665,7 @@ async function handleApi(req, res, url) {
       currentMeta: serverPlayer.currentMeta,
       hymnId: serverPlayer.hymnId,
       error: serverPlayer.error,
+      lastOutput: serverPlayer.lastOutput,
       elapsed,
       duration: serverPlayer.totalDuration,
       controls: serverPlayer.controls,
@@ -2644,6 +2684,8 @@ async function handleApi(req, res, url) {
         currentTitle: serverPlayer.currentTitle,
         currentMeta: serverPlayer.currentMeta,
         hymnId: serverPlayer.hymnId,
+        error: serverPlayer.error,
+        lastOutput: serverPlayer.lastOutput,
         elapsed: serverElapsed,
         duration: serverPlayer.totalDuration,
         controls: serverPlayer.controls,
