@@ -75,15 +75,6 @@ Church mixer, amplifier, or powered speakers
 
 Additional public-safe screenshots can be placed in `docs/screenshots/`.
 
-Recommended captures:
-
-- Service page desktop
-- Service page phone
-- Library page
-- Settings page
-- Login screen
-- Operator mode
-
 ## Raspberry Pi Quick Install
 
 On the Raspberry Pi:
