@@ -1947,31 +1947,19 @@ function startServerAudioQueue() {
 function startDirectMpvFile(player, item, playbackFilePath = item.filePath, cleanupAfterPlay = false) {
   const itemVolume = Math.max(0, Math.min(2, Number(item.volume ?? 1)));
   const itemSpeed = Math.max(0.5, Math.min(2, Number(item.speed || 1)));
-  serverPlayer.ipcPath = path.join(os.tmpdir(), `hymn-console-mpv-${process.pid}.sock`);
-  try {
-    fs.rmSync(serverPlayer.ipcPath, { force: true });
-  } catch {}
   if (cleanupAfterPlay) {
     serverPlayer.cleanupFiles.push(playbackFilePath);
     serverPlayer.fallbackFilePath = item.filePath;
     serverPlayer.fallbackAttempted = false;
   }
-  const targetVolume = Math.round(itemVolume * 100);
   const directArgs = [
     "--no-video",
-    `--input-ipc-server=${serverPlayer.ipcPath}`,
-    `--volume=${Number(item.fadeIn || 0) > 0 ? 0 : targetVolume}`,
+    `--volume=${Math.round(itemVolume * 100)}`,
     `--speed=${itemSpeed}`,
     ...mpvAudioOutputArgs(),
     playbackFilePath
   ];
   startServerProcess(player, directArgs);
-  waitForMpvSocket()
-    .then((ready) => {
-      if (ready && Number(item.fadeIn || 0) > 0) return fadeMpvVolume(0, targetVolume, Number(item.fadeIn || 0));
-      return null;
-    })
-    .catch(() => {});
 }
 
 function renderSegmentsThenPlay(player, item, filterGraph) {
