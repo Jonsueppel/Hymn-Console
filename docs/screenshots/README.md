@@ -2,6 +2,10 @@
 
 Place public-safe screenshots here for the GitHub README.
 
+Current showcase:
+
+- `hymn-console-device-showcase.png`
+
 Recommended screenshots:
 
 - `service-desktop.png`

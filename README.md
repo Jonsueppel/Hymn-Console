@@ -71,7 +71,9 @@ Church mixer, amplifier, or powered speakers
 
 ## Screenshots
 
-Screenshots can be placed in `docs/screenshots/`.
+![Hymn Console running on service devices](docs/screenshots/hymn-console-device-showcase.png)
+
+Additional public-safe screenshots can be placed in `docs/screenshots/`.
 
 Recommended captures:
 
