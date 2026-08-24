@@ -1038,11 +1038,15 @@ async function listTrash() {
   }
 }
 
-async function createBackupFile() {
+async function createBackupFile(options = {}) {
+  const copyExternal = options.copyExternal !== false;
+  const prune = options.prune !== false;
+  const backupRoot = options.root || BACKUP_DIR;
   const settings = await readSettings();
   const createdAt = new Date().toISOString();
   const name = `hymn-console-backup-${createdAt.replace(/[:.]/g, "-")}`;
-  const snapshotPath = path.join(BACKUP_DIR, name);
+  await fsp.mkdir(backupRoot, { recursive: true });
+  const snapshotPath = path.join(backupRoot, name);
   const mediaDir = await ensureMediaStorage(settings);
   await fsp.mkdir(snapshotPath, { recursive: true });
   await fsp.mkdir(path.join(snapshotPath, "media"), { recursive: true });
@@ -1075,7 +1079,7 @@ async function createBackupFile() {
 
   let externalPath = "";
   const targetRoot = String(settings.backup?.targetPath || "").trim();
-  if (targetRoot) {
+  if (copyExternal && targetRoot) {
     const resolvedTarget = path.resolve(targetRoot);
     if (resolvedTarget === path.resolve(BACKUP_DIR) || resolvedTarget.startsWith(`${path.resolve(BACKUP_DIR)}${path.sep}`)) {
       throw new Error("External backup target must be outside the internal backup folder.");
@@ -1086,8 +1090,10 @@ async function createBackupFile() {
   }
 
   const retentionDays = Math.max(1, Math.min(365, Number(settings.backup?.retentionDays || 14)));
-  await pruneBackupFolders(BACKUP_DIR, retentionDays);
-  if (targetRoot) await pruneBackupFolders(path.resolve(targetRoot), retentionDays);
+  if (prune) {
+    await pruneBackupFolders(BACKUP_DIR, retentionDays);
+    if (copyExternal && targetRoot) await pruneBackupFolders(path.resolve(targetRoot), retentionDays);
+  }
   return { name, snapshotPath, externalPath, mediaFiles: mediaFiles.length };
 }
 
@@ -2823,7 +2829,8 @@ async function handleApi(req, res, url) {
   if (req.method === "POST" && url.pathname === "/api/backups/export") {
     auth.requirePermission(storage, req, "backups.download");
     if (!await commandExists("tar")) return send(res, 500, { error: "The tar utility is required to export a complete backup." });
-    const saved = await createBackupFile();
+    const tempRoot = await fsp.mkdtemp(path.join(os.tmpdir(), "hymn-console-download-"));
+    const saved = await createBackupFile({ copyExternal: false, prune: false, root: tempRoot });
     const archivePath = `${saved.snapshotPath}.tar.gz`;
     await runCommand("tar", ["-czf", archivePath, "-C", saved.snapshotPath, "."]);
     await storage.secureFile(archivePath);
@@ -2836,7 +2843,7 @@ async function handleApi(req, res, url) {
       "x-content-type-options": "nosniff"
     });
     const stream = fs.createReadStream(archivePath);
-    const cleanupArchive = () => fsp.rm(archivePath, { force: true }).catch(() => {});
+    const cleanupArchive = () => fsp.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
     stream.once("error", (error) => {
       cleanupArchive();
       if (!res.headersSent) send(res, 500, { error: error.message });

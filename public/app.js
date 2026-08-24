@@ -2466,7 +2466,7 @@ async function runStartupCheck() {
 
 async function saveLocalBackup() {
   const result = await permissionApi("backups.run", "/api/backups/local", { method: "POST" });
-  setStatus(`Local backup saved: ${result.name}`);
+  setStatus(`Backup saved on Pi/USB: ${result.name}`);
 }
 
 async function downloadDiagnostics() {
