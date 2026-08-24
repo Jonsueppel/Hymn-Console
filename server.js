@@ -1945,8 +1945,6 @@ function startServerAudioQueue() {
 }
 
 function startDirectMpvFile(player, item, playbackFilePath = item.filePath, cleanupAfterPlay = false) {
-  const itemVolume = Math.max(0, Math.min(2, Number(item.volume ?? 1)));
-  const itemSpeed = Math.max(0.5, Math.min(2, Number(item.speed || 1)));
   if (cleanupAfterPlay) {
     serverPlayer.cleanupFiles.push(playbackFilePath);
     serverPlayer.fallbackFilePath = item.filePath;
@@ -1954,8 +1952,6 @@ function startDirectMpvFile(player, item, playbackFilePath = item.filePath, clea
   }
   const directArgs = [
     "--no-video",
-    `--volume=${Math.round(itemVolume * 100)}`,
-    `--speed=${itemSpeed}`,
     ...mpvAudioOutputArgs(),
     playbackFilePath
   ];
