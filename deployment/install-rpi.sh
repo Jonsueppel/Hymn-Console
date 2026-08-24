@@ -120,13 +120,17 @@ if [[ -f "${ENV_FILE}" ]]; then
   source "${ENV_FILE}"
 fi
 HYMN_BACKUP_TOKEN="${HYMN_BACKUP_TOKEN:-$(openssl rand -hex 32)}"
-HYMN_MPV_AO="${HYMN_MPV_AO:-alsa}"
+HYMN_MPV_AO="${HYMN_MPV_AO:-pipewire}"
 HYMN_MPV_AUDIO_DEVICE="${HYMN_MPV_AUDIO_DEVICE:-}"
+XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/1000}"
+PULSE_RUNTIME_PATH="${PULSE_RUNTIME_PATH:-/run/user/1000/pulse}"
 cat > "${ENV_FILE}" <<ENVVARS
 HYMN_BACKUP_TOKEN=${HYMN_BACKUP_TOKEN}
 NODE_ENV=production
 HYMN_MPV_AO=${HYMN_MPV_AO}
 HYMN_MPV_AUDIO_DEVICE=${HYMN_MPV_AUDIO_DEVICE}
+XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}
+PULSE_RUNTIME_PATH=${PULSE_RUNTIME_PATH}
 ENVVARS
 chown root:root "${ENV_FILE}"
 chmod 600 "${ENV_FILE}"
@@ -172,9 +176,9 @@ Environment=HYMN_DATA_DIR=${APP_DIR}/data
 Environment=HYMN_MEDIA_DIR=${APP_DIR}/media
 EnvironmentFile=${ENV_FILE}
 UMask=0077
-PrivateTmp=true
+PrivateTmp=false
 ProtectSystem=full
-ProtectHome=read-only
+ProtectHome=false
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true

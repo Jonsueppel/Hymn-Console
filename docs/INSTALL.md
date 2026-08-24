@@ -95,6 +95,8 @@ Use **This Device** when audio should play from the phone, tablet, or laptop.
 
 Use **Sound System** when the Raspberry Pi is connected to the church audio system.
 
+Sound System playback defaults to PipeWire on Raspberry Pi OS. If a special audio interface requires ALSA, rerun the installer with `HYMN_MPV_AO=alsa`.
+
 AirPlay appears as the app name followed by `AirPlay`, such as:
 
 ```text

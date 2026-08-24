@@ -13,6 +13,19 @@ User=pi
 Environment=PORT=8080
 Environment=HYMN_DATA_DIR=/opt/hymn-console/data
 Environment=HYMN_MEDIA_DIR=/opt/hymn-console/media
+Environment=HYMN_MPV_AO=pipewire
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=PULSE_RUNTIME_PATH=/run/user/1000/pulse
+PrivateTmp=false
+ProtectSystem=full
+ProtectHome=false
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+TimeoutStopSec=15
 StandardOutput=append:/opt/hymn-console/logs/hymn-console.log
 StandardError=append:/opt/hymn-console/logs/hymn-console-error.log
 

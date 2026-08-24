@@ -124,6 +124,12 @@ sudo APP_DISPLAY_NAME="Tri-City Hymn Console" RUN_USER=admin bash deployment/ins
 
 AirPlay uses the Raspberry Pi sound output. If AirPlay starts while Hymn Console Sound System playback is active, the installer config attempts to stop Hymn Console playback first so the two audio sources do not compete.
 
+Hymn Console Sound System playback defaults to `mpv` through PipeWire because that is the most reliable path on current Raspberry Pi OS desktop images. To force a different `mpv` audio output, rerun the installer with:
+
+```bash
+sudo HYMN_MPV_AO=alsa RUN_USER=pi bash deployment/install-rpi.sh
+```
+
 The installer defaults Shairport Sync to ALSA device `hw:0`, which matched the tested Raspberry Pi sound output. If your sound system uses a different ALSA device, rerun the installer with:
 
 ```bash

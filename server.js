@@ -1850,7 +1850,9 @@ function startServerProcess(player, args, helperProcess = null) {
   serverPlayer.backend = isMpvPlayer(player) ? "mpv" : "ffplay";
   serverPlayer.lastOutput = "";
   addLog("audio", `Playing on sound system: ${serverPlayer.currentTitle || "selected hymn"}`);
-  if (isMpvPlayer(player)) addLog("audio", `Sound system player command: ${path.basename(player)} ${args.map((arg) => String(arg).includes(" ") ? `"${arg}"` : arg).join(" ")}`);
+  if (isMpvPlayer(player) && process.env.HYMN_DEBUG_AUDIO === "1") {
+    addLog("audio", `Sound system player command: ${path.basename(player)} ${args.map((arg) => String(arg).includes(" ") ? `"${arg}"` : arg).join(" ")}`);
+  }
   serverPlayer.process = spawn(player, args, { stdio: [helperProcess ? "pipe" : "ignore", "ignore", "pipe"], windowsHide: true });
   serverPlayer.process.stderr?.on("data", (chunk) => {
     playerOutput = appendOutput(playerOutput, chunk);
@@ -2043,7 +2045,7 @@ async function pauseServerAudio() {
   }
   serverPlayer.itemStartedAt = 0;
   serverPlayer.pausedAt = now;
-  if (serverPlayer.backend === "mpv") {
+  if (serverPlayer.backend === "mpv" && serverPlayer.ipcPath) {
     const fadeOut = Number(serverPlayer.queue[0]?.fadeOut || 0);
     await waitForMpvSocket();
     await fadeMpvVolume(100, 0, fadeOut);
@@ -2060,7 +2062,7 @@ async function pauseServerAudio() {
 async function resumeServerAudio() {
   if (!serverPlayer.process) return false;
   if (process.platform === "win32") return false;
-  if (serverPlayer.backend === "mpv") {
+  if (serverPlayer.backend === "mpv" && serverPlayer.ipcPath) {
     const fadeIn = Number(serverPlayer.queue[0]?.fadeIn || 0);
     await waitForMpvSocket();
     await setMpvVolume(0).catch(() => {});
@@ -2096,7 +2098,7 @@ async function setServerAudioVolume(volume) {
       addLog("error", `Raspberry Pi volume adjustment failed: ${error.message}`);
     }
   }
-  if (serverPlayer.backend === "mpv" && serverPlayer.process) {
+  if (serverPlayer.backend === "mpv" && serverPlayer.process && serverPlayer.ipcPath) {
     await waitForMpvSocket();
     await setMpvVolume(percent);
     return true;
@@ -2109,7 +2111,7 @@ async function gracefulStopServerAudio() {
     stopServerAudio();
     return true;
   }
-  if (serverPlayer.backend === "mpv" && process.platform !== "win32") {
+  if (serverPlayer.backend === "mpv" && serverPlayer.ipcPath && process.platform !== "win32") {
     const fadeOut = Number(serverPlayer.queue[0]?.fadeOut || 0);
     await waitForMpvSocket();
     await fadeMpvVolume(100, 0, fadeOut);
