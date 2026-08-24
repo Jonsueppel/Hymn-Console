@@ -117,6 +117,8 @@ const serverPlayer = {
   backend: "",
   lastOutput: "",
   cleanupFiles: [],
+  fallbackFilePath: "",
+  fallbackAttempted: false,
   controls: { volume: 0.9, speed: 1, fadeIn: 1.5, fadeOut: 2 }
 };
 const livePlayback = {
@@ -1724,6 +1726,8 @@ function stopServerAudio() {
   serverPlayer.pausedAt = 0;
   serverPlayer.backend = "";
   serverPlayer.lastOutput = "";
+  serverPlayer.fallbackFilePath = "";
+  serverPlayer.fallbackAttempted = false;
   if (serverPlayer.process) {
     serverPlayer.process.removeAllListeners();
     try {
@@ -1895,6 +1899,21 @@ function startServerProcess(player, args, helperProcess = null) {
       if (code && code !== 0) {
         serverPlayer.error = `${path.basename(player)} exited with code ${code}${output ? `: ${output}` : ""}`;
         addLog("error", serverPlayer.error);
+        if (serverPlayer.fallbackFilePath && !serverPlayer.fallbackAttempted) {
+          const fallbackFilePath = serverPlayer.fallbackFilePath;
+          const fallbackItem = { ...serverPlayer.queue[0], filePath: fallbackFilePath };
+          serverPlayer.fallbackAttempted = true;
+          serverPlayer.fallbackFilePath = "";
+          addLog("audio", "Sound system arrangement failed; falling back to full MP3 playback");
+          for (const file of serverPlayer.cleanupFiles) {
+            try {
+              fs.rmSync(file, { force: true });
+            } catch {}
+          }
+          serverPlayer.cleanupFiles = [];
+          startDirectMpvFile(player, fallbackItem, fallbackFilePath, false);
+          return;
+        }
       } else if (signal) {
         serverPlayer.error = `${path.basename(player)} stopped by signal ${signal}${output ? `: ${output}` : ""}`;
         addLog("error", serverPlayer.error);
@@ -1932,7 +1951,11 @@ function startDirectMpvFile(player, item, playbackFilePath = item.filePath, clea
   try {
     fs.rmSync(serverPlayer.ipcPath, { force: true });
   } catch {}
-  if (cleanupAfterPlay) serverPlayer.cleanupFiles.push(playbackFilePath);
+  if (cleanupAfterPlay) {
+    serverPlayer.cleanupFiles.push(playbackFilePath);
+    serverPlayer.fallbackFilePath = item.filePath;
+    serverPlayer.fallbackAttempted = false;
+  }
   const targetVolume = Math.round(itemVolume * 100);
   const directArgs = [
     "--no-video",
