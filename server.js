@@ -1905,6 +1905,35 @@ function startServerAudioQueue() {
   startServerProcess(player, args);
 }
 
+function startDirectMpvFile(player, item) {
+  const itemVolume = Math.max(0, Math.min(2, Number(item.volume ?? 1)));
+  const itemSpeed = Math.max(0.5, Math.min(2, Number(item.speed || 1)));
+  serverPlayer.ipcPath = path.join(os.tmpdir(), `hymn-console-mpv-${process.pid}.sock`);
+  try {
+    fs.rmSync(serverPlayer.ipcPath, { force: true });
+  } catch {}
+  const targetVolume = Math.round(itemVolume * 100);
+  const directArgs = [
+    "--no-video",
+    "--msg-level=all=warn",
+    "--term-playing-msg=",
+    "--osd-level=0",
+    "--force-window=no",
+    `--input-ipc-server=${serverPlayer.ipcPath}`,
+    `--volume=${Number(item.fadeIn || 0) > 0 ? 0 : targetVolume}`,
+    `--speed=${itemSpeed}`,
+    ...mpvAudioOutputArgs(),
+    item.filePath
+  ];
+  startServerProcess(player, directArgs);
+  waitForMpvSocket()
+    .then((ready) => {
+      if (ready && Number(item.fadeIn || 0) > 0) return fadeMpvVolume(0, targetVolume, Number(item.fadeIn || 0));
+      return null;
+    })
+    .catch(() => {});
+}
+
 function startServerAudioConcat() {
   if (!serverPlayer.queue.length) {
     stopServerAudio();
@@ -1919,28 +1948,8 @@ function startServerAudioConcat() {
     startServerAudioQueue();
     return;
   }
-  if (serverPlayer.queue.length === 1 && !Number(serverPlayer.queue[0].duration || 0)) {
-    serverPlayer.totalDuration = 0;
-    const itemVolume = Math.max(0, Math.min(2, Number(item.volume ?? 1)));
-    const itemSpeed = Math.max(0.5, Math.min(2, Number(item.speed || 1)));
-    const directArgs = [
-      "--no-video",
-      "--msg-level=all=warn",
-      "--term-playing-msg=",
-      "--osd-level=0",
-      "--force-window=no",
-      `--input-ipc-server=${serverPlayer.ipcPath || path.join(os.tmpdir(), `hymn-console-mpv-${process.pid}.sock`)}`,
-      `--volume=${Math.round(itemVolume * 100)}`,
-      `--speed=${itemSpeed}`,
-      ...mpvAudioOutputArgs(),
-      item.filePath
-    ];
-    serverPlayer.ipcPath = directArgs.find((arg) => arg.startsWith("--input-ipc-server=")).split("=")[1];
-    try {
-      fs.rmSync(serverPlayer.ipcPath, { force: true });
-    } catch {}
-    startServerProcess(player, directArgs);
-    waitForMpvSocket().catch(() => {});
+  if (serverPlayer.queue.length === 1 && item.fullFile) {
+    startDirectMpvFile(player, item);
     return;
   }
   const ffmpeg = process.env.HYMN_FFMPEG || "ffmpeg";
@@ -2107,7 +2116,7 @@ async function buildServerAudioQueue(payload) {
   };
   if (!segments.length) {
     const duration = Number(payload.duration || 0) || await probeAudioDuration(filePath);
-    return [{ ...common, start: 0, duration }];
+    return [{ ...common, start: 0, duration, fullFile: true }];
   }
   const queue = segments
     .map((segment) => ({
@@ -2118,7 +2127,7 @@ async function buildServerAudioQueue(payload) {
     .filter((segment) => segment.duration > 0);
   if (!queue.length) {
     const duration = Number(payload.duration || 0) || await probeAudioDuration(filePath);
-    return [{ ...common, start: 0, duration }];
+    return [{ ...common, start: 0, duration, fullFile: true }];
   }
   return queue;
 }
