@@ -1952,12 +1952,30 @@ function startDirectMpvFile(player, item, playbackFilePath = item.filePath, clea
     serverPlayer.fallbackFilePath = item.filePath;
     serverPlayer.fallbackAttempted = false;
   }
+  if (serverPlayer.ipcPath) {
+    try {
+      fs.rmSync(serverPlayer.ipcPath, { force: true });
+    } catch {}
+  }
+  serverPlayer.ipcPath = path.join(os.tmpdir(), `hymn-console-mpv-${process.pid}-${Date.now()}.sock`);
   const directArgs = [
     "--no-video",
+    `--input-ipc-server=${serverPlayer.ipcPath}`,
     ...mpvAudioOutputArgs(),
     playbackFilePath
   ];
   startServerProcess(player, directArgs);
+}
+
+function audioProcessingRequired(item) {
+  const speed = Math.max(0.5, Math.min(2, Number(item.speed || 1)));
+  const volume = Math.max(0, Math.min(2, Number(item.volume ?? 1)));
+  return speed !== 1 || volume !== 1 || Number(item.fadeIn || 0) > 0 || Number(item.fadeOut || 0) > 0;
+}
+
+function buildFullFileFilterGraph(item) {
+  const filters = buildAudioFilters(item, true, true).filters;
+  return filters.length ? `[0:a]${filters.join(",")}[out]` : "[0:a]anull[out]";
 }
 
 function renderSegmentsThenPlay(player, item, filterGraph) {
@@ -2014,7 +2032,11 @@ function startServerAudioConcat() {
     return;
   }
   if (serverPlayer.queue.length === 1 && item.fullFile) {
-    startDirectMpvFile(player, item);
+    if (audioProcessingRequired(item)) {
+      renderSegmentsThenPlay(player, item, buildFullFileFilterGraph(item));
+    } else {
+      startDirectMpvFile(player, item);
+    }
     return;
   }
   const trimFilters = serverPlayer.queue.map((segment, index) => {
