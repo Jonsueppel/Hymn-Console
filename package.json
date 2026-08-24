@@ -3,6 +3,24 @@
   "version": "2.2.0",
   "private": true,
   "description": "Raspberry Pi friendly church hymn library and hymn console.",
+  "homepage": "https://github.com/Jonsueppel/Hymn-Console#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jonsueppel/Hymn-Console.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Jonsueppel/Hymn-Console/issues"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "keywords": [
+    "raspberry-pi",
+    "church",
+    "hymns",
+    "music",
+    "airplay",
+    "sqlite",
+    "service-planning"
+  ],
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

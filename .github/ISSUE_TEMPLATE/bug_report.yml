@@ -1,0 +1,44 @@
+name: Bug report
+description: Report something that is not working correctly.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Do not include passwords, API keys, recovery codes, backup files, databases, or copyrighted MP3/lyrics content.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+      placeholder: Sound System playback stops when...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps that trigger the issue.
+      placeholder: |
+        1. Open Service
+        2. Select Sound System
+        3. Press Play
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Raspberry Pi model, OS, browser/device, app version, and audio output.
+      placeholder: Raspberry Pi 4, Raspberry Pi OS, iPhone Safari, Sound System
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Paste non-sensitive diagnostic details or relevant logs.

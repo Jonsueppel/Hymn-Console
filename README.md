@@ -1,8 +1,15 @@
 # Hymn Console
 
+[![CI](https://github.com/Jonsueppel/Hymn-Console/actions/workflows/ci.yml/badge.svg)](https://github.com/Jonsueppel/Hymn-Console/actions/workflows/ci.yml)
+![Node](https://img.shields.io/badge/node-%3E%3D24-2b7fc3)
+![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%20%7C%20Web-155a91)
+![License](https://img.shields.io/badge/license-source--available-d4a64f)
+
 Hymn Console is a Raspberry Pi powered hymn playback system for churches that need reliable service music without a pianist. It stores MP3 hymns locally, lets volunteers build a service queue from phones, tablets, and laptops, and plays audio through either the current browser device or the Raspberry Pi connected to the church sound system.
 
 The goal is simple: upload hymns, organize a service, press play, and keep worship moving without a complicated audio workstation.
+
+> Built for local church networks, volunteer operators, and reliable Sunday service playback.
 
 ## Highlights
 
@@ -16,6 +23,16 @@ The goal is simple: upload hymns, organize a service, press play, and keep worsh
 - Lyrics viewer, editable hymn metadata, audio defaults, fades, and Smart Build timing.
 - Administrator and operator accounts with granular permissions.
 - SQLite storage, streamed uploads, trash recovery, complete backups, diagnostics, and self-test tools.
+
+## Who It Is For
+
+Hymn Console is designed for churches that:
+
+- Do not always have a pianist or accompanist available.
+- Have MP3 hymn recordings they want to play from a reliable local device.
+- Need a simple service queue that volunteers can operate from a phone, tablet, or laptop.
+- Want the Raspberry Pi connected directly to the church sound system.
+- Prefer local control instead of depending on cloud playback during worship.
 
 ## How It Works
 
@@ -40,6 +57,17 @@ Raspberry Pi audio output
               v
 Church mixer, amplifier, or powered speakers
 ```
+
+## Core Workflow
+
+1. Upload MP3 hymns to the Raspberry Pi SD card or USB storage.
+2. Edit hymn details such as title, page, key, tempo, themes, lyrics, and playback defaults.
+3. Add hymns to the Service Queue.
+4. Choose verse count and Intro, Verses, Chorus options.
+5. Select **This Device** or **Sound System** output.
+6. Press Play and run the service.
+7. Save the queue as a reusable service plan.
+8. Download or save complete backups.
 
 ## Screenshots
 
@@ -81,13 +109,22 @@ http://<raspberry-pi-ip-address>:8080/
 
 More detail: `docs/INSTALL.md` and `deployment/README.md`.
 
+## First-Time Login
+
+On first launch, Hymn Console walks you through creating the built-in administrator account. After setup:
+
+- Create operator accounts for volunteers.
+- Grant only the permissions each person needs.
+- Keep the administrator recovery code off the Raspberry Pi.
+- Store OpenAI/API secrets only in app settings or server environment files, never in Git.
+
 ## Updating From GitHub
 
 On the Pi:
 
 ```bash
 cd /opt/hymn-console
-git pull
+git pull --ff-only
 sudo RUN_USER=pi bash deployment/install-rpi.sh
 sudo systemctl restart hymn-console
 ```
@@ -123,6 +160,15 @@ Default runtime paths:
 
 These folders are intentionally ignored by Git. Do not commit live church data.
 
+## Backup Behavior
+
+Hymn Console has two complete backup actions:
+
+- **Download Backup to This Device** downloads a `.tar.gz` backup through the browser to the laptop, phone, or tablet currently using the app.
+- **Save Backup to Pi/USB** creates a backup on the Raspberry Pi or configured off-device path.
+
+Complete backups include the SQLite database, users, settings, service queue, service plans, themes, custom logo, and MP3 files.
+
 ## Security And Privacy
 
 Never commit:
@@ -141,11 +187,15 @@ See `SECURITY.md` for reporting and deployment guidance.
 
 ## Documentation
 
+- `docs/README.md` - documentation index.
 - `docs/INSTALL.md` - installation and update instructions.
 - `docs/USER-GUIDE.md` - operator and administrator user guide.
 - `docs/PRODUCTION-VALIDATION.md` - real-device validation checklist.
+- `docs/RELEASE-CHECKLIST.md` - release and deployment checklist.
 - `deployment/README.md` - Raspberry Pi installer details.
 - `CHANGELOG.md` - release history.
+- `CONTRIBUTING.md` - contribution and local development guidance.
+- `SUPPORT.md` - support boundaries and troubleshooting paths.
 
 ## Validation
 

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support and troubleshooting
+    url: https://github.com/Jonsueppel/Hymn-Console/blob/main/SUPPORT.md
+    about: Start here for installation, Raspberry Pi, audio, storage, and backup troubleshooting.
+  - name: Security policy
+    url: https://github.com/Jonsueppel/Hymn-Console/blob/main/SECURITY.md
+    about: Read this before reporting a security issue or handling secrets.
