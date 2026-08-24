@@ -24,6 +24,7 @@ const state = {
   serverTimelineTimer: null,
   livePlaybackTimer: null,
   serverVolumeTimer: null,
+  serverSpeedTimer: null,
   serverRepeatRestarting: false,
   healthTimer: null,
   detectedNetwork: null,
@@ -3074,6 +3075,17 @@ function sendServerVolume(value) {
   }, 120);
 }
 
+function sendServerSpeed(value) {
+  clearTimeout(state.serverSpeedTimer);
+  state.serverSpeedTimer = setTimeout(() => {
+    api("/api/server-player", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "speed", speed: Number(value) })
+    }).catch((error) => setStatus(error.message));
+  }, 120);
+}
+
 function seekArrangement(position) {
   if (!state.segmentPlan.length) {
     if (audio.duration) audio.currentTime = position;
@@ -3131,8 +3143,14 @@ function resetControl(id) {
   const input = $(id);
   if (!input) return;
   input.value = CONTROL_DEFAULTS[id];
-  if (id === "volume") audio.volume = CONTROL_DEFAULTS.volume;
-  if (id === "speed") audio.playbackRate = CONTROL_DEFAULTS.speed;
+  if (id === "volume") {
+    if (state.audioOutput === "server") sendServerVolume(CONTROL_DEFAULTS.volume);
+    else audio.volume = CONTROL_DEFAULTS.volume;
+  }
+  if (id === "speed") {
+    if (state.audioOutput === "server") sendServerSpeed(CONTROL_DEFAULTS.speed);
+    else audio.playbackRate = CONTROL_DEFAULTS.speed;
+  }
   updateControlValues();
   setStatus(`${input.closest("label")?.querySelector("span")?.textContent || "Control"} reset`);
 }
@@ -3344,7 +3362,12 @@ $("volume").addEventListener("input", (event) => {
   publishLivePlayback(audio.paused ? "paused" : "playing", true);
 });
 $("speed").addEventListener("input", (event) => {
-  audio.playbackRate = Number(event.target.value);
+  const value = Number(event.target.value);
+  if (state.audioOutput === "server") {
+    sendServerSpeed(value);
+  } else {
+    audio.playbackRate = value;
+  }
   updateControlValues();
   publishLivePlayback(audio.paused ? "paused" : "playing", true);
 });

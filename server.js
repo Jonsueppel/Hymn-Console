@@ -110,6 +110,7 @@ const serverPlayer = {
   queueIndex: -1,
   error: "",
   totalDuration: 0,
+  unadjustedDuration: 0,
   elapsedBefore: 0,
   itemStartedAt: 0,
   pausedAt: 0,
@@ -1721,6 +1722,7 @@ function stopServerAudio() {
   serverPlayer.hymnId = "";
   serverPlayer.queueIndex = -1;
   serverPlayer.totalDuration = 0;
+  serverPlayer.unadjustedDuration = 0;
   serverPlayer.elapsedBefore = 0;
   serverPlayer.itemStartedAt = 0;
   serverPlayer.pausedAt = 0;
@@ -1773,12 +1775,13 @@ function mpvAudioOutputArgs() {
   return args;
 }
 
-function buildAudioFilters(item, isFirst = true, isLast = true) {
+function buildAudioFilters(item, isFirst = true, isLast = true, options = {}) {
   const player = soundSystemPlayer();
   const filters = [];
+  const applySpeed = options.speed !== false;
   const speed = Math.max(0.5, Math.min(2, Number(item.speed || 1)));
   const volume = Math.max(0, Math.min(2, Number(item.volume ?? 1)));
-  if (speed !== 1) filters.push(`atempo=${speed}`);
+  if (applySpeed && speed !== 1) filters.push(`atempo=${speed}`);
   if (volume !== 1) filters.push(`volume=${volume}`);
   if (isFirst && item.fadeIn) filters.push(`afade=t=in:st=0:d=${Number(item.fadeIn)}`);
   if (isLast && item.fadeOut && item.duration && item.duration > item.fadeOut) {
@@ -1808,6 +1811,10 @@ function sendMpvCommand(command) {
 
 async function setMpvVolume(volume) {
   await sendMpvCommand(["set_property", "volume", Math.max(0, Math.min(100, volume))]);
+}
+
+async function setMpvSpeed(speed) {
+  await sendMpvCommand(["set_property", "speed", Math.max(0.5, Math.min(2, Number(speed || 1)))]);
 }
 
 async function fadeMpvVolume(from, to, seconds) {
@@ -1961,6 +1968,7 @@ function startDirectMpvFile(player, item, playbackFilePath = item.filePath, clea
   const directArgs = [
     "--no-video",
     `--input-ipc-server=${serverPlayer.ipcPath}`,
+    `--speed=${Math.max(0.5, Math.min(2, Number(item.speed || 1)))}`,
     ...mpvAudioOutputArgs(),
     playbackFilePath
   ];
@@ -1968,13 +1976,12 @@ function startDirectMpvFile(player, item, playbackFilePath = item.filePath, clea
 }
 
 function audioProcessingRequired(item) {
-  const speed = Math.max(0.5, Math.min(2, Number(item.speed || 1)));
   const volume = Math.max(0, Math.min(2, Number(item.volume ?? 1)));
-  return speed !== 1 || volume !== 1 || Number(item.fadeIn || 0) > 0 || Number(item.fadeOut || 0) > 0;
+  return volume !== 1 || Number(item.fadeIn || 0) > 0 || Number(item.fadeOut || 0) > 0;
 }
 
 function buildFullFileFilterGraph(item) {
-  const filters = buildAudioFilters(item, true, true).filters;
+  const filters = buildAudioFilters(item, true, true, { speed: false }).filters;
   return filters.length ? `[0:a]${filters.join(",")}[out]` : "[0:a]anull[out]";
 }
 
@@ -2045,7 +2052,7 @@ function startServerAudioConcat() {
     return `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS[s${index}]`;
   });
   const concatInputs = serverPlayer.queue.map((_, index) => `[s${index}]`).join("");
-  const postFilters = buildAudioFilters({ ...item, duration: serverPlayer.totalDuration }, true, true).filters;
+  const postFilters = buildAudioFilters({ ...item, duration: serverPlayer.unadjustedDuration || serverPlayer.totalDuration }, true, true, { speed: false }).filters;
   const outputLabel = postFilters.length ? "[joined]" : "[out]";
   const joinFilter = serverPlayer.queue.length > 1
     ? `${concatInputs}concat=n=${serverPlayer.queue.length}:v=0:a=1${outputLabel}`
@@ -2961,6 +2968,26 @@ async function handleApi(req, res, url) {
       serverPlayer.controls.volume = Math.max(0, Math.min(1, Number(payload.volume ?? serverPlayer.controls.volume)));
       return send(res, 200, { ok, status: serverPlayer.status, volume: serverPlayer.controls.volume, controls: serverPlayer.controls });
     }
+    if (payload.action === "speed") {
+      const speed = Math.max(0.5, Math.min(2, Number(payload.speed ?? serverPlayer.controls.speed)));
+      let ok = false;
+      if (serverPlayer.backend === "mpv" && serverPlayer.process && serverPlayer.ipcPath) {
+        await waitForMpvSocket();
+        await setMpvSpeed(speed);
+        ok = true;
+      }
+      const elapsed = serverPlayerElapsed();
+      const previousDuration = Math.max(0, Number(serverPlayer.totalDuration || 0));
+      serverPlayer.controls.speed = speed;
+      if (serverPlayer.unadjustedDuration) {
+        serverPlayer.totalDuration = serverPlayer.unadjustedDuration / speed;
+        if (previousDuration > 0 && serverPlayer.totalDuration > 0) {
+          serverPlayer.elapsedBefore = Math.min(serverPlayer.totalDuration, (elapsed / previousDuration) * serverPlayer.totalDuration);
+          serverPlayer.itemStartedAt = serverPlayer.status === "playing" ? Date.now() : 0;
+        }
+      }
+      return send(res, 200, { ok, status: serverPlayer.status, elapsed: serverPlayerElapsed(), duration: serverPlayer.totalDuration, speed: serverPlayer.controls.speed, controls: serverPlayer.controls });
+    }
     if (payload.action === "play") {
       const player = soundSystemPlayer();
       if (!await commandExists(player)) return send(res, 409, { error: `Sound System player "${player}" is not installed on this computer. Use This Device here, or run Sound System on the Raspberry Pi.` });
@@ -2978,7 +3005,8 @@ async function handleApi(req, res, url) {
         fadeOut: Math.max(0, Number(payload.fadeOut ?? serverPlayer.controls.fadeOut))
       };
       serverPlayer.error = "";
-      serverPlayer.totalDuration = Number(payload.duration || serverPlayer.queue.reduce((sum, item) => sum + Number(item.duration || 0), 0));
+      serverPlayer.unadjustedDuration = Number(payload.duration || serverPlayer.queue.reduce((sum, item) => sum + Number(item.duration || 0), 0));
+      serverPlayer.totalDuration = serverPlayer.unadjustedDuration / serverPlayer.controls.speed;
       serverPlayer.elapsedBefore = 0;
       serverPlayer.itemStartedAt = 0;
       serverPlayer.pausedAt = 0;
