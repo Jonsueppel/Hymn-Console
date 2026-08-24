@@ -116,6 +116,7 @@ const serverPlayer = {
   ipcPath: "",
   backend: "",
   lastOutput: "",
+  cleanupFiles: [],
   controls: { volume: 0.9, speed: 1, fadeIn: 1.5, fadeOut: 2 }
 };
 const livePlayback = {
@@ -1743,6 +1744,12 @@ function stopServerAudio() {
     } catch {}
     serverPlayer.ipcPath = "";
   }
+  for (const file of serverPlayer.cleanupFiles) {
+    try {
+      fs.rmSync(file, { force: true });
+    } catch {}
+  }
+  serverPlayer.cleanupFiles = [];
 }
 
 function soundSystemPlayer() {
@@ -1849,6 +1856,18 @@ function startServerProcess(player, args, helperProcess = null) {
       helperOutput = appendOutput(helperOutput, chunk);
       serverPlayer.lastOutput = summarizeOutput();
     });
+    serverPlayer.process.stdin?.on("error", (error) => {
+      if (error.code !== "EPIPE") {
+        serverPlayer.error = `Sound system input failed: ${error.message}`;
+        addLog("error", serverPlayer.error);
+      }
+    });
+    helperProcess.stdout?.on("error", (error) => {
+      if (error.code !== "EPIPE") {
+        serverPlayer.error = `ffmpeg output failed: ${error.message}`;
+        addLog("error", serverPlayer.error);
+      }
+    });
     helperProcess.stdout.pipe(serverPlayer.process.stdin);
     helperProcess.once("error", (error) => {
       serverPlayer.error = `ffmpeg failed: ${error.message}`;
@@ -1905,13 +1924,14 @@ function startServerAudioQueue() {
   startServerProcess(player, args);
 }
 
-function startDirectMpvFile(player, item) {
+function startDirectMpvFile(player, item, playbackFilePath = item.filePath, cleanupAfterPlay = false) {
   const itemVolume = Math.max(0, Math.min(2, Number(item.volume ?? 1)));
   const itemSpeed = Math.max(0.5, Math.min(2, Number(item.speed || 1)));
   serverPlayer.ipcPath = path.join(os.tmpdir(), `hymn-console-mpv-${process.pid}.sock`);
   try {
     fs.rmSync(serverPlayer.ipcPath, { force: true });
   } catch {}
+  if (cleanupAfterPlay) serverPlayer.cleanupFiles.push(playbackFilePath);
   const targetVolume = Math.round(itemVolume * 100);
   const directArgs = [
     "--no-video",
@@ -1923,7 +1943,7 @@ function startDirectMpvFile(player, item) {
     `--volume=${Number(item.fadeIn || 0) > 0 ? 0 : targetVolume}`,
     `--speed=${itemSpeed}`,
     ...mpvAudioOutputArgs(),
-    item.filePath
+    playbackFilePath
   ];
   startServerProcess(player, directArgs);
   waitForMpvSocket()
@@ -1932,6 +1952,45 @@ function startDirectMpvFile(player, item) {
       return null;
     })
     .catch(() => {});
+}
+
+function renderSegmentsThenPlay(player, item, filterGraph) {
+  const ffmpeg = process.env.HYMN_FFMPEG || "ffmpeg";
+  const tempWav = path.join(os.tmpdir(), `hymn-console-render-${process.pid}-${Date.now()}.wav`);
+  const ffmpegArgs = ["-y", "-loglevel", "warning", "-i", item.filePath, "-filter_complex", filterGraph, "-map", "[out]", "-f", "wav", tempWav];
+  let stderr = "";
+  serverPlayer.status = "playing";
+  serverPlayer.itemStartedAt = Date.now();
+  serverPlayer.backend = "rendering";
+  addLog("audio", `Preparing sound system arrangement: ${serverPlayer.currentTitle || "selected hymn"}`);
+  const ffmpegProcess = spawn(ffmpeg, ffmpegArgs, { stdio: ["ignore", "ignore", "pipe"], windowsHide: true });
+  serverPlayer.helperProcess = ffmpegProcess;
+  ffmpegProcess.stderr?.on("data", (chunk) => {
+    stderr = `${stderr}${chunk.toString()}`.slice(-4000);
+    serverPlayer.lastOutput = stderr.trim().replace(/\s+/g, " ").slice(0, 700);
+  });
+  ffmpegProcess.once("error", (error) => {
+    serverPlayer.error = `ffmpeg failed: ${error.message}`;
+    addLog("error", serverPlayer.error);
+    fs.rmSync(tempWav, { force: true });
+    stopServerAudio();
+  });
+  ffmpegProcess.once("exit", (code, signal) => {
+    serverPlayer.helperProcess = null;
+    if (serverPlayer.status === "stopped") {
+      fs.rmSync(tempWav, { force: true });
+      return;
+    }
+    if (code !== 0) {
+      const detail = stderr.trim().replace(/\s+/g, " ").slice(0, 700);
+      serverPlayer.error = `ffmpeg exited with code ${code || "unknown"}${signal ? ` signal ${signal}` : ""}${detail ? `: ${detail}` : ""}`;
+      addLog("error", serverPlayer.error);
+      fs.rmSync(tempWav, { force: true });
+      stopServerAudio();
+      return;
+    }
+    startDirectMpvFile(player, item, tempWav, true);
+  });
 }
 
 function startServerAudioConcat() {
@@ -1952,7 +2011,6 @@ function startServerAudioConcat() {
     startDirectMpvFile(player, item);
     return;
   }
-  const ffmpeg = process.env.HYMN_FFMPEG || "ffmpeg";
   const trimFilters = serverPlayer.queue.map((segment, index) => {
     const start = Math.max(0, Number(segment.start || 0));
     const end = start + Math.max(0, Number(segment.duration || 0));
@@ -1969,25 +2027,7 @@ function startServerAudioConcat() {
     joinFilter,
     ...(postFilters.length ? [`[joined]${postFilters.join(",")}[out]`] : [])
   ].join(";");
-  const ffmpegArgs = ["-loglevel", "warning", "-i", item.filePath, "-filter_complex", filterGraph, "-map", "[out]", "-f", "wav", "pipe:1"];
-  const ffmpegProcess = spawn(ffmpeg, ffmpegArgs, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
-  serverPlayer.ipcPath = path.join(os.tmpdir(), `hymn-console-mpv-${process.pid}.sock`);
-  try {
-    fs.rmSync(serverPlayer.ipcPath, { force: true });
-  } catch {}
-  const mpvArgs = [
-    "--no-video",
-    "--msg-level=all=warn",
-    "--term-playing-msg=",
-    "--osd-level=0",
-    "--force-window=no",
-    `--input-ipc-server=${serverPlayer.ipcPath}`,
-    "--volume=100",
-    ...mpvAudioOutputArgs(),
-    "-"
-  ];
-  startServerProcess(player, mpvArgs, ffmpegProcess);
-  waitForMpvSocket().catch(() => {});
+  renderSegmentsThenPlay(player, item, filterGraph);
 }
 
 async function pauseServerAudio() {
