@@ -1846,6 +1846,7 @@ function startServerProcess(player, args, helperProcess = null) {
   serverPlayer.backend = isMpvPlayer(player) ? "mpv" : "ffplay";
   serverPlayer.lastOutput = "";
   addLog("audio", `Playing on sound system: ${serverPlayer.currentTitle || "selected hymn"}`);
+  if (isMpvPlayer(player)) addLog("audio", `Sound system player command: ${path.basename(player)} ${args.map((arg) => String(arg).includes(" ") ? `"${arg}"` : arg).join(" ")}`);
   serverPlayer.process = spawn(player, args, { stdio: [helperProcess ? "pipe" : "ignore", "ignore", "pipe"], windowsHide: true });
   serverPlayer.process.stderr?.on("data", (chunk) => {
     playerOutput = appendOutput(playerOutput, chunk);
@@ -1935,10 +1936,6 @@ function startDirectMpvFile(player, item, playbackFilePath = item.filePath, clea
   const targetVolume = Math.round(itemVolume * 100);
   const directArgs = [
     "--no-video",
-    "--msg-level=all=warn",
-    "--term-playing-msg=",
-    "--osd-level=0",
-    "--force-window=no",
     `--input-ipc-server=${serverPlayer.ipcPath}`,
     `--volume=${Number(item.fadeIn || 0) > 0 ? 0 : targetVolume}`,
     `--speed=${itemSpeed}`,
