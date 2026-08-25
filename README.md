@@ -73,7 +73,6 @@ Church mixer, amplifier, or powered speakers
 
 ![Hymn Console running on service devices](docs/screenshots/hymn-console-device-showcase.png)
 
-Additional public-safe screenshots can be placed in `docs/screenshots/`.
 
 ## Raspberry Pi Quick Install
 
